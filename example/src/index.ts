@@ -116,9 +116,23 @@ streamer.client.login(config.token);
 
 async function playVideo(video: string, udpConn: MediaUdp) {
     let includeAudio = true;
+    let copyH264Codec = false;
 
     try {
         const metadata = await getInputMetadata(video);
+        console.log(metadata)
+        const videoStream = metadata.streams.find( (value) => value.codec_type === 'video' && value.codec_name === "h264" && value.pix_fmt === 'yuv420p')
+        if(videoStream)
+        {
+            // lets copy the video instead
+            console.log('copying codec')
+            copyH264Codec = true;
+            const fps = parseInt(videoStream.avg_frame_rate)
+            const width = videoStream.width
+            const height = videoStream.height
+            console.log(fps, width, height, videoStream.profile)
+            setStreamOpts({ fps, width, height })
+        }
         //console.log(JSON.stringify(metadata.streams));
         includeAudio = inputHasAudio(metadata);
     } catch(e) {
@@ -131,7 +145,7 @@ async function playVideo(video: string, udpConn: MediaUdp) {
     udpConn.mediaConnection.setSpeaking(true);
     udpConn.mediaConnection.setVideoStatus(true);
     try {
-        const res = await streamLivestreamVideo(video, udpConn, includeAudio);
+        const res = await streamLivestreamVideo(video, udpConn, includeAudio, copyH264Codec);
 
         console.log("Finished playing video " + res);
     } catch (e) {

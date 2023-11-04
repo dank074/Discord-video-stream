@@ -5,7 +5,7 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "dependencies": {
-        "@dank074/discord-video-stream": "3.0.2",
+        "@dank074/discord-video-stream": "file:..",
         "discord.js-selfbot-v13": "^2.14.9",
         "puppeteer": "^19.11.1",
         "puppeteer-stream": "^2.1.4"

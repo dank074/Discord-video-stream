@@ -11,7 +11,7 @@ import { VideoStream } from './VideoStream';
 
 export let command: ffmpeg.FfmpegCommand;
 
-export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaUdp, includeAudio = true) {
+export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaUdp, includeAudio = true, copyH264Codec=false) {
     return new Promise<string>((resolve, reject) => {
         const videoStream: VideoStream = new VideoStream(mediaUdp, streamOpts.fps);
         
@@ -61,21 +61,31 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                 .format('ivf')
                 .outputOption('-deadline', 'realtime');
             } else {
-                command.output(StreamOutput(videoOutput).url, { end: false })
-                .noAudio()
-                .size(`${streamOpts.width}x${streamOpts.height}`)
-                .fpsOutput(streamOpts.fps)
-                .videoBitrate(`${streamOpts.bitrateKbps}k`)
-                .format('h264')
-                .outputOptions([
-                    '-tune zerolatency',
-                    '-pix_fmt yuv420p',
-                    '-preset ultrafast',
-                    '-profile:v baseline',
-                    `-g ${streamOpts.fps}`,
-                    `-x264-params keyint=${streamOpts.fps}:min-keyint=${streamOpts.fps}`,
-                    '-bsf:v h264_metadata=aud=insert'
-                ]);
+                if(copyH264Codec) {
+                    command.output(StreamOutput(videoOutput).url, { end: false })
+                    .noAudio()
+                    .videoCodec('copy')
+                    .format('h264')
+                    .outputOptions([
+                        '-bsf:v h264_metadata=aud=insert'
+                    ]);
+                } else {
+                    command.output(StreamOutput(videoOutput).url, { end: false })
+                    .noAudio()
+                    .size(`${streamOpts.width}x${streamOpts.height}`)
+                    .fpsOutput(streamOpts.fps)
+                    .videoBitrate(`${streamOpts.bitrateKbps}k`)
+                    .format('h264')
+                    .outputOptions([
+                        '-tune zerolatency',
+                        '-pix_fmt yuv420p',
+                        '-preset ultrafast',
+                        '-profile:v baseline',
+                        `-g ${streamOpts.fps}`,
+                        `-x264-params keyint=${streamOpts.fps}:min-keyint=${streamOpts.fps}`,
+                        '-bsf:v h264_metadata=aud=insert'
+                    ]);
+                }
             }
 
             videoOutput.pipe(videoStream, { end: false});
