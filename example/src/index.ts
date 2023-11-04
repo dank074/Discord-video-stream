@@ -122,15 +122,16 @@ async function playVideo(video: string, udpConn: MediaUdp) {
         const metadata = await getInputMetadata(video);
         console.log(metadata)
         const videoStream = metadata.streams.find( (value) => value.codec_type === 'video' && value.codec_name === "h264" && value.pix_fmt === 'yuv420p')
-        if(videoStream)
+        // @ts-ignore
+        if(videoStream && (videoStream.profile === 'Constrained Baseline' || videoStream.profile === 'Baseline')) //only supports those profiles
         {
             // lets copy the video instead
             console.log('copying codec')
             copyH264Codec = true;
-            const fps = parseInt(videoStream.avg_frame_rate)
+            const fps = parseInt(videoStream.avg_frame_rate.split('/')[0])/parseInt(videoStream.avg_frame_rate.split('/')[1])
             const width = videoStream.width
             const height = videoStream.height
-            console.log(fps, width, height, videoStream.profile)
+            console.log(fps, width, height, Number(videoStream.profile))
             setStreamOpts({ fps, width, height })
         }
         //console.log(JSON.stringify(metadata.streams));
