@@ -1,4 +1,5 @@
 # Discord bot video
+
 Fork: [Discord-video-experiment](https://github.com/mrjvs/Discord-video-experiment)
 
 This project implements the custom Discord UDP protocol for sending media. Since Discord is likely change their custom protocol, this library is subject to break at any point. An effort will be made to keep this library up to date with the latest Discord protocol, but it is not guranteed.
@@ -6,29 +7,36 @@ This project implements the custom Discord UDP protocol for sending media. Since
 For better stability it is recommended to use WebRTC protocol instead since Discord is forced to adhere to spec, which means that the non-signaling code is guaranteed to work.
 
 ## Features
- - Playing vp8 or h264 video in a voice channel (`go live`, or webcam video)
- - Playing opus audio in a voice channel
+
+- Playing vp8 or h264 video in a voice channel (`go live`, or webcam video)
+- Playing opus audio in a voice channel
 
 ## Implementation
+
 What I implemented and what I did not.
 
 #### Video codecs
- - [X] VP8
- - [ ] VP9
- - [X] H.264
+
+- [x] VP8
+- [ ] VP9
+- [x] H.264
 
 #### Packet types
- - [X] RTP (sending of realtime data)
- - [ ] RTX (retransmission)
+
+- [x] RTP (sending of realtime data)
+- [ ] RTX (retransmission)
 
 #### Connection types
- - [X] Regular Voice Connection
- - [X] Go live
+
+- [x] Regular Voice Connection
+- [x] Go live
 
 #### Extras
- - [X] Figure out rtp header extensions (discord specific) (discord seems to use one-byte RTP header extension https://www.rfc-editor.org/rfc/rfc8285.html#section-4.2)
+
+- [x] Figure out rtp header extensions (discord specific) (discord seems to use one-byte RTP header extension https://www.rfc-editor.org/rfc/rfc8285.html#section-4.2)
 
 Extensions supported by Discord (taken from the webrtc sdp exchange)
+
 ```
 "a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level"
 "a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"
@@ -43,29 +51,34 @@ Extensions supported by Discord (taken from the webrtc sdp exchange)
 "a=extmap:13 urn:3gpp:video-orientation"
 "a=extmap:14 urn:ietf:params:rtp-hdrext:toffset"
 ```
+
 ## Requirements
+
 Ffmpeg is required for the usage of this package. If you are on linux you can easily install ffmpeg from your distribution's package manager.
 
 If you are on Windows, you can download it from the official ffmpeg website: https://ffmpeg.org/download.html
 
 ## Usage
+
 Install the package, alongside its peer-dependency discord.js-selfbot-v13:
+
 ```
 npm install @dank074/discord-video-stream@latest
 npm install discord.js-selfbot-v13@latest
 ```
 
 Create a new client, and patch its events to listen for voice gateway events:
+
 ```typescript
 import { Client } from "discord.js-selfbot-v13";
-import { Streamer } from '@dank074/discord-video-stream';
+import { Streamer } from "@dank074/discord-video-stream";
 
 const streamer = new Streamer(new Client());
-await streamer.client.login('TOKEN HERE');
-
+await streamer.client.login("TOKEN HERE");
 ```
 
 Make client join a voice channel and create a stream:
+
 ```typescript
 await streamer.joinVoice("GUILD ID HERE", "CHANNEL ID HERE");
 
@@ -73,50 +86,73 @@ const udp = await streamer.createStream();
 ```
 
 Start sending media over the udp connection:
+
 ```typescript
 udp.mediaConnection.setSpeaking(true);
 udp.mediaConnection.setVideoStatus(true);
 try {
-    const res = await streamLivestreamVideo("DIRECT VIDEO URL OR READABLE STREAM HERE", udp);
+  const res = await streamLivestreamVideo(
+    "DIRECT VIDEO URL OR READABLE STREAM HERE",
+    udp
+  );
 
-    console.log("Finished playing video " + res);
+  console.log("Finished playing video " + res);
 } catch (e) {
-    console.log(e);
+  console.log(e);
 } finally {
-    udp.mediaConnection.setSpeaking(false);
-    udp.mediaConnection.setVideoStatus(false);
+  udp.mediaConnection.setSpeaking(false);
+  udp.mediaConnection.setVideoStatus(false);
 }
 ```
+
 ## Running example
+
 `example/src/config.json`:
+
 ```json
 "token": "SELF TOKEN HERE",
 "acceptedAuthors": ["USER_ID_HERE"],
 ```
 
 1. Configure your `config.json` with your accepted authors ids, and your self token
-2. Generate js files with ```npm run build```
-3. Start program with: ```npm run start```
+2. Generate js files with `npm run build`
+3. Start program with: `npm run start`
 4. Join a voice channel
-5. Start streaming with commands: 
+5. Start streaming with commands:
 
 for go-live
+
 ```
 $play-live <Direct video link>
 ```
+
 or for cam
+
 ```
 $play-cam <Direct video link>
 ```
+
 or for screensharing using puppeteer
+
 ```
 $play-screen <website url>
 ```
+
 for example:
+
 ```
 $play-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
 ```
 
+Start the stream on Dec 30th, 2023 at 9:30pm.
+$schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 2023-12-30 21:30:00
+
+Start the stream on the current day at 9:30pm.
+$schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 21:30:00
+
+**Command has to be given while you're in a voice channel. This is the channel the bot will join later. Currently, the bot has to be restarted after the command is given.**
+
+```
 ## FAQS
 - Can I stream on existing voice connection (CAM) and in a go-live connection simultaneously?
 
@@ -125,3 +161,4 @@ Yes, just send the media packets over both udp connections. The voice gateway ex
 - Does this library work with bot tokens?
 
 No, Discord blocks video from bots which is why this library uses a selfbot library as peer dependency. You must use a user token
+```
