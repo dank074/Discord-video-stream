@@ -144,12 +144,11 @@ for example:
 $play-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
 ```
 
-Start the stream on Dec 30th, 2023 at 9:30pm.
+or for scheduling a stream (starts the stream on Dec 30th, 2023 at 9:30pm, omitting the date defaults to the current day)
 ```
 $schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 2023-12-30 21:30:00
 ```
 
-Start the stream on the current day at 9:30pm.
 ```
 $schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 21:30:00
 ```
