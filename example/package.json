@@ -5,8 +5,10 @@
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "dependencies": {
-        "@dank074/discord-video-stream": "3.0.2",
-        "discord.js-selfbot-v13": "^2.14.9",
+        "@dank074/discord-video-stream": "^3.0.2",
+        "discord.js-selfbot-v13": "^2.14.12",
+        "dotenv": "^16.3.1",
+        "luxon": "^3.4.4",
         "puppeteer": "^19.11.1",
         "puppeteer-stream": "^2.1.4"
     },
