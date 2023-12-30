@@ -145,14 +145,16 @@ $play-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigB
 ```
 
 Start the stream on Dec 30th, 2023 at 9:30pm.
+```
 $schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 2023-12-30 21:30:00
+```
 
 Start the stream on the current day at 9:30pm.
+```
 $schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 21:30:00
+```
 
 **Command has to be given while you're in a voice channel. This is the channel the bot will join later. Currently, the bot has to be restarted after the command is given.**
-
-```
 ## FAQS
 - Can I stream on existing voice connection (CAM) and in a go-live connection simultaneously?
 
