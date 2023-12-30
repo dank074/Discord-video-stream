@@ -145,6 +145,7 @@ $play-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigB
 ```
 
 or for scheduling a stream (starts the stream on Dec 30th, 2023 at 9:30pm, omitting the date defaults to the current day)
+
 **Command has to be given while you're in a voice channel. This is the channel the bot will join later. Currently, the bot has to be restarted after the command is given.**
 ```
 $schedule-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4 2023-12-30 21:30:00
