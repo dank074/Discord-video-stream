@@ -123,7 +123,8 @@ async function playVideo(video: string, udpConn: MediaUdp) {
         console.log(metadata)
         const videoStream = metadata.streams.find( (value) => value.codec_type === 'video' && value.codec_name === "h264" && value.pix_fmt === 'yuv420p')
         // @ts-ignore
-        if(videoStream && (videoStream.profile === 'Constrained Baseline' || videoStream.profile === 'Baseline')) //only supports those profiles
+        // todo: figure out why this is not working for certain h264 streams
+        if(videoStream && (videoStream.profile === 'Constrained Baseline' || videoStream.profile === 'Baseline') || videoStream.profile === 'Main') //only supports those profiles
         {
             // lets copy the video instead
             console.log('copying codec')
@@ -131,8 +132,16 @@ async function playVideo(video: string, udpConn: MediaUdp) {
             const fps = parseInt(videoStream.avg_frame_rate.split('/')[0])/parseInt(videoStream.avg_frame_rate.split('/')[1])
             const width = videoStream.width
             const height = videoStream.height
-            console.log(fps, width, height, Number(videoStream.profile))
+            console.log({fps, width, height, "profile": videoStream.profile})
             setStreamOpts({ fps, width, height })
+        } else {
+            // reset the stream options which might have been set at a previous codec copy stream
+            setStreamOpts({
+                width: config.streamOpts.width, 
+                height: config.streamOpts.height, 
+                fps: config.streamOpts.fps, 
+                bitrateKbps: config.streamOpts.bitrateKbps
+            })
         }
         //console.log(JSON.stringify(metadata.streams));
         includeAudio = inputHasAudio(metadata);
