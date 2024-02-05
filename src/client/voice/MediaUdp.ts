@@ -1,11 +1,12 @@
 import udpCon from 'dgram';
 import { isIPv4 } from 'net';
+import { streamOpts } from '../StreamOpts';
 import { AudioPacketizer } from '../packet/AudioPacketizer';
 import { BaseMediaPacketizer, max_int32bit } from '../packet/BaseMediaPacketizer';
-import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8';
-import { streamOpts } from '../StreamOpts';
 import { VideoPacketizerH264 } from '../packet/VideoPacketizerH264';
+import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8';
 import { BaseMediaConnection } from './BaseMediaConnection';
+import { VoiceConnection } from "./VoiceConnection";
 
 // credit to discord.js
 function parseLocalPacket(message: Buffer) {
@@ -21,7 +22,7 @@ function parseLocalPacket(message: Buffer) {
 
 	return { ip, port };
 }
-  
+
 
 export class MediaUdp {
     private _mediaConnection: BaseMediaConnection;
@@ -43,7 +44,7 @@ export class MediaUdp {
     public getNewNonceBuffer(): Buffer {
         const nonceBuffer = Buffer.alloc(24)
         this._nonce = (this._nonce + 1) % max_int32bit;
-        
+
         nonceBuffer.writeUInt32BE(this._nonce, 0);
         return nonceBuffer;
     }
@@ -85,10 +86,6 @@ export class MediaUdp {
         });
     }
 
-    handleIncoming(buf: any): void {
-        //console.log("RECEIVED PACKET", buf);
-    }
-
     public get ready(): boolean {
         return this._ready;
     }
@@ -124,13 +121,13 @@ export class MediaUdp {
                     this._mediaConnection.self_port = packet.port;
                     this._mediaConnection.setProtocols();
                 } catch(e) { reject(e) }
-                
+
                 resolve();
-                this._socket.on('message', this.handleIncoming);
+                if ((this._mediaConnection as VoiceConnection).reciever) this._socket.on('message', (this._mediaConnection as VoiceConnection).reciever.onUdpMessage);
             });
 
             const blank = Buffer.alloc(74);
-            
+
             blank.writeUInt16BE(1, 0);
 			blank.writeUInt16BE(70, 2);
             blank.writeUInt32BE(this._mediaConnection.ssrc, 4);

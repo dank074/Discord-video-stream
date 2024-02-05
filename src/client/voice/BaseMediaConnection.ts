@@ -1,7 +1,7 @@
-import { streamOpts } from "../StreamOpts";
-import { VoiceOpCodes } from "./VoiceOpCodes";
-import { MediaUdp } from "./MediaUdp";
 import WebSocket from 'ws';
+import { streamOpts } from "../StreamOpts";
+import { MediaUdp } from "./MediaUdp";
+import { VoiceOpCodes } from "./VoiceOpCodes";
 
 type VoiceConnectionStatus =
 {
@@ -12,7 +12,7 @@ type VoiceConnectionStatus =
 }
 
 export abstract class BaseMediaConnection {
-    private interval: NodeJS.Timer;
+    private interval: ReturnType<typeof setTimeout>;
     public udp: MediaUdp;
     public guildId: string;
     public channelId: string;
@@ -65,7 +65,7 @@ export abstract class BaseMediaConnection {
         this.status.hasSession = true;
         this.start();
     }
-    
+
     setTokens(server: string, token: string): void {
         this.token = token;
         this.server = server;
@@ -77,7 +77,7 @@ export abstract class BaseMediaConnection {
     start(): void {
         /*
         ** Connection can only start once both
-        ** session description and tokens have been gathered 
+        ** session description and tokens have been gathered
         */
         if (this.status.hasSession && this.status.hasToken) {
             if (this.status.started)
@@ -241,7 +241,7 @@ export abstract class BaseMediaConnection {
             video_ssrc: bool ? this.videoSsrc : 0,
             rtx_ssrc: bool ? this.rtxSsrc : 0,
             streams: [
-                { 
+                {
                     type:"video",
                     rid:"100",
                     ssrc: bool ? this.videoSsrc : 0,
