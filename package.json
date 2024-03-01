@@ -1,52 +1,52 @@
 {
-  "name": "@dank074/discord-video-stream",
-  "version": "3.0.5",
-  "description": "Experiment for making video streaming work for discord selfbots",
-  "main": "dist/index.js",
-  "types": "dist/index.d.ts",
-  "files": [
-    "dist",
-    "src"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
-  "dependencies": {
-    "@dank074/fluent-ffmpeg-multistream-ts": "^1.0.2",
-    "@discordjs/opus": "^0.8.0",
-    "fluent-ffmpeg": "^2.1.2",
-    "libsodium-wrappers": "^0.7.11",
-    "prism-media": "^1.3.5",
-    "ws": "^8.13.0"
-  },
-  "devDependencies": {
-    "@types/fluent-ffmpeg": "^2.1.21",
-    "@types/libsodium-wrappers": "^0.7.10",
-    "@types/node": "^18.17.4",
-    "@types/ws": "^8.5.10",
-    "typescript": "^4.9.5"
-  },
-  "peerDependencies": {
-    "discord.js-selfbot-v13": "2.x"
-  },
-  "scripts": {
-    "build": "tsc"
-  },
-  "keywords": [
-    "discord",
-    "video",
-    "voice",
-    "stream",
-    "go-live"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/dank074/Discord-video-stream.git"
-  },
-  "author": "dank074",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/dank074/Discord-video-stream/issues"
-  },
-  "homepage": "https://github.com/dank074/Discord-video-stream#readme"
+    "name": "@dank074/discord-video-stream",
+    "version": "3.0.5",
+    "description": "Experiment for making video streaming work for discord selfbots",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist",
+        "src"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "dependencies": {
+        "@dank074/fluent-ffmpeg-multistream-ts": "^1.0.2",
+        "@discordjs/opus": "^0.8.0",
+        "fluent-ffmpeg": "^2.1.2",
+        "libsodium-wrappers": "^0.7.11",
+        "prism-media": "^1.3.5",
+        "ws": "^8.13.0"
+    },
+    "devDependencies": {
+        "@types/fluent-ffmpeg": "^2.1.21",
+        "@types/libsodium-wrappers": "^0.7.10",
+        "@types/node": "^18.17.4",
+        "@types/ws": "^8.5.10",
+        "typescript": "^4.9.5"
+    },
+    "peerDependencies": {
+        "discord.js-selfbot-v13": "2.x"
+    },
+    "scripts": {
+        "build": "tsc"
+    },
+    "keywords": [
+        "discord",
+        "video",
+        "voice",
+        "stream",
+        "go-live"
+    ],
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/dank074/Discord-video-stream.git"
+    },
+    "author": "dank074",
+    "license": "ISC",
+    "bugs": {
+        "url": "https://github.com/dank074/Discord-video-stream/issues"
+    },
+    "homepage": "https://github.com/dank074/Discord-video-stream#readme"
 }

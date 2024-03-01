@@ -1,0 +1,22 @@
+{
+    "name": "@dank074/discord-video-stream-example",
+    "version": "1.0.0",
+    "description": "",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "dependencies": {
+        "@dank074/discord-video-stream": "3.0.5",
+        "discord.js-selfbot-v13": "^2.14.9"
+    },
+    "devDependencies": {
+        "@types/node": "^18.14.1",
+        "typescript": "^4.9.5"
+    },
+    "scripts": {
+        "build": "tsc",
+        "start": "node ./dist/index.js",
+        "yeet": "npm run build && npm run start"
+    },
+    "author": "",
+    "license": "ISC"
+}

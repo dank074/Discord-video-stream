@@ -1,12 +1,22 @@
-import { VoiceConnection } from "./voice/VoiceConnection";
 import { Client } from 'discord.js-selfbot-v13';
+import { GatewayOpCodes } from "./GatewayOpCodes";
 import { MediaUdp } from "./voice/MediaUdp";
 import { StreamConnection } from "./voice/StreamConnection";
-import { GatewayOpCodes } from "./GatewayOpCodes";
+import { VoiceConnection } from "./voice/VoiceConnection";
+
+export type VoiceState = {
+    self_mute: boolean;
+    self_deaf: boolean;
+    self_video: boolean;
+}
 
 export class Streamer {
     private _voiceConnection?: VoiceConnection;
     private _client: Client;
+
+    private self_mute = false
+    private self_deaf = true
+    private self_video = false
 
     constructor(client: Client) {
         this._client = client;
@@ -51,12 +61,12 @@ export class Streamer {
         return new Promise<MediaUdp>((resolve, reject) => {
             if (!this.voiceConnection)
                 reject("cannot start stream without first joining voice channel");
-    
+
             this.signalStream(
                 this.voiceConnection.guildId,
                 this.voiceConnection.channelId
             );
-    
+
             this.voiceConnection.streamConnection = new StreamConnection(
                 this.voiceConnection.guildId,
                 this.client.user.id,
@@ -70,33 +80,40 @@ export class Streamer {
 
     public stopStream(): void {
         const stream = this.voiceConnection?.streamConnection;
-    
+
         if(!stream) return;
-    
+
         stream.stop();
-    
+
         this.signalStopStream(stream.guildId, stream.channelId);
-    
+
         this.voiceConnection.streamConnection = undefined;
     }
 
     public leaveVoice(): void {
         this.voiceConnection?.stop();
-    
+
         this.signalLeaveVoice();
-    
+
         this._voiceConnection = undefined;
     }
 
     public signalVideo(guild_id: string, channel_id: string, video_enabled: boolean): void {
+        this.self_video = video_enabled
+        this.setVoiceState(guild_id, channel_id)
+    }
+
+    public setVoiceState(guild_id: string, channel_id: string, { self_mute, self_deaf, self_video } = {} as Partial<VoiceState>) {
         this.sendOpcode(GatewayOpCodes.VOICE_STATE_UPDATE, {
-            guild_id,
-            channel_id,
-            self_mute: false,
-            self_deaf: true,
-            self_video: video_enabled,
+            // @ts-ignore
+            guild_id: guild_id,
+            channel_id: channel_id,
+            self_mute: self_mute ?? this.self_mute,
+            self_deaf: self_deaf ?? this.self_deaf,
+            self_video: self_video ?? this.self_video,
         });
     }
+
 
     public signalStream(guild_id: string, channel_id: string): void {
         this.sendOpcode(GatewayOpCodes.STREAM_CREATE, {
@@ -105,7 +122,7 @@ export class Streamer {
             channel_id,
             preferred_region: null,
         });
-    
+
         this.sendOpcode(GatewayOpCodes.STREAM_SET_PAUSED, {
             stream_key: `guild:${guild_id}:${channel_id}:${this.client.user.id}`,
             paused: false,
@@ -140,18 +157,18 @@ export class Streamer {
             case "VOICE_SERVER_UPDATE": {
                  // transfer voice server update to voice connection
                 if (data.guild_id != this.voiceConnection?.guildId) return;
-        
+
                 this.voiceConnection?.setTokens(data.endpoint, data.token);
                 break;
             }
             case "STREAM_CREATE": {
                 const [type, guildId, channelId, userId] = data.stream_key.split(":");
-    
+
                 if (this.voiceConnection?.guildId != guildId) return;
-        
+
                 if (userId === this.client.user.id) {
                     this.voiceConnection.streamConnection.serverId = data.rtc_server_id;
-        
+
                     this.voiceConnection.streamConnection.streamKey = data.stream_key;
                     this.voiceConnection.streamConnection.setSession(
                         this.voiceConnection.session_id
@@ -161,9 +178,9 @@ export class Streamer {
             }
             case "STREAM_SERVER_UPDATE": {
                 const [type, guildId, channelId, userId] = data.stream_key.split(":");
-    
+
                 if (this.voiceConnection?.guildId != guildId) return;
-        
+
                 if (userId === this.client.user.id) {
                     this.voiceConnection.streamConnection.setTokens(
                         data.endpoint,
@@ -171,7 +188,7 @@ export class Streamer {
                     );
                 }
                 break;
-            } 
+            }
         }
     }
 }
