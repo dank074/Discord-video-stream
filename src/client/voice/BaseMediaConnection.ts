@@ -14,15 +14,47 @@ type VoiceConnectionStatus =
 export type SupportedVideoCodec = "H264" | "H265" | "VP8" | "VP9" | "AV1";
 
 export interface StreamOptions {
+    /**
+     * Video output width
+     */
     width?: number;
+    /**
+     * Video output height
+     */
     height?: number;
+    /**
+     * Video output frames per second
+     */
     fps?: number;
+    /**
+     * Video output bitrate in kbps
+     */
     bitrateKbps?: number;
     maxBitrateKbps?: number;
-    hardwareAcceleration?: boolean;
+    /**
+     * Enables hardware accelerated video decoding. Enabling this option might result in an exception
+     * being thrown by Ffmpeg process if your system does not support hardware acceleration
+     */
+    hardwareAcceleratedDecoding?: boolean;
+    /**
+     * Output video codec. **Only** supports H264, H265, and VP8 currently
+     */
     videoCodec?: SupportedVideoCodec;
+    /**
+     * Ffmpeg will read frames at native framerate. Disabling this make ffmpeg read frames as
+     * fast as possible and `setTimeout` will be used to control output fps instead. Enabling this
+     * can result in certain streams having video/audio out of sync (see https://github.com/dank074/Discord-video-stream/issues/52)
+     */
     readAtNativeFps?: boolean;
+    /**
+     * Enables sending RTCP sender reports. Helps the receiver synchronize the audio/video frames, except in some weird
+     * cases which is why you can disable it
+     */
     rtcpSenderReportEnabled?: boolean;
+    /**
+     * Encoding preset for H264 or H265. The faster it is, the lower the quality
+     */
+    h26xPreset?: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow' | 'slower' | 'veryslow';
 }
 
 const defaultStreamOptions: StreamOptions = {
@@ -31,10 +63,11 @@ const defaultStreamOptions: StreamOptions = {
     fps: 30,
     bitrateKbps: 1000,
     maxBitrateKbps: 2500,
-    hardwareAcceleration: false,
+    hardwareAcceleratedDecoding: false,
     videoCodec: 'H264',
     readAtNativeFps: true,
     rtcpSenderReportEnabled: true,
+    h26xPreset: 'ultrafast',
 }
 
 export abstract class BaseMediaConnection {
@@ -92,7 +125,7 @@ export abstract class BaseMediaConnection {
         this._streamOptions.fps = options.fps ?? this._streamOptions.fps;
         this._streamOptions.bitrateKbps = options.bitrateKbps ?? this._streamOptions.bitrateKbps;
         this._streamOptions.maxBitrateKbps = options.maxBitrateKbps ?? this._streamOptions.maxBitrateKbps;
-        this._streamOptions.hardwareAcceleration = options.hardwareAcceleration ?? this._streamOptions.hardwareAcceleration;
+        this._streamOptions.hardwareAcceleratedDecoding = options.hardwareAcceleratedDecoding ?? this._streamOptions.hardwareAcceleratedDecoding;
         this._streamOptions.videoCodec = options.videoCodec ?? this._streamOptions.videoCodec;
         this._streamOptions.readAtNativeFps = options.readAtNativeFps ?? this._streamOptions.readAtNativeFps;
         this._streamOptions.rtcpSenderReportEnabled = options.rtcpSenderReportEnabled ?? this._streamOptions.rtcpSenderReportEnabled;

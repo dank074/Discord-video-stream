@@ -80,7 +80,7 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                     .outputOptions([
                         '-tune zerolatency',
                         '-pix_fmt yuv420p',
-                        '-preset ultrafast',
+                        `-preset ${streamOpts.h26xPreset}`,
                         '-profile:v main',
                         `-g ${streamOpts.fps}`,
                         `-bf 0`,
@@ -97,7 +97,7 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                     .outputOptions([
                         '-tune zerolatency',
                         '-pix_fmt yuv420p',
-                        '-preset ultrafast',
+                        `-preset ${streamOpts.h26xPreset}`,
                         '-profile:v baseline',
                         `-g ${streamOpts.fps}`,
                         `-bf 0`,
@@ -125,7 +125,7 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                 opus.pipe(audioStream, { end: false });
             }
 
-            if (streamOpts.hardwareAcceleration) command.inputOption('-hwaccel', 'auto');
+            if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
 
             if(streamOpts.readAtNativeFps) command.inputOption('-re')
 
