@@ -80,13 +80,15 @@ export class VideoPacketizerAV1 extends BaseMediaPacketizer {
         let bytesSent = 0, packetsSent = 0;
 
         const obus = this._splitObu(frame);
-        for (const { header, obu } of obus)
+        for (let i = 0; i < obus.length; ++i)
         {
+            const { obu } = obus[i];
             const data = this.partitionDataMTUSizedChunks(obu);
-            const isFirstObu = header.obu_type == 2; // OBU_TEMPORAL_DELIMITER
+            const isFirstObu = i === 0;
+            const isLastObu = i === obus.length - 1;
             
-            for (let i = 0; i < data.length; i++) {
-                const packet = this.createPacket(data[i], isFirstObu, i === 0, i === (data.length - 1));
+            for (let j = 0; j < data.length; j++) {
+                const packet = this.createPacket(data[j], isFirstObu, isLastObu, j === 0, j === (data.length - 1));
     
                 this.mediaUdp.sendPacket(packet);
                 bytesSent += packet.length;
@@ -97,10 +99,10 @@ export class VideoPacketizerAV1 extends BaseMediaPacketizer {
         this.onFrameSent(packetsSent, bytesSent);
     }
 
-    public createPacket(chunk: Buffer, isFirstObu: boolean, isFirstPacket: boolean, isLastPacket: boolean): Buffer {
+    public createPacket(chunk: Buffer, isFirstObu: boolean, isLastObu: boolean, isFirstPacket: boolean, isLastPacket: boolean): Buffer {
         if (chunk.length > this.mtu) throw Error('error packetizing video frame: frame is larger than mtu');
 
-        const packetHeader = this.makeRtpHeader(isLastPacket);
+        const packetHeader = this.makeRtpHeader(isLastObu && isLastPacket);
 
         const packetData = this.makeChunk(chunk, isFirstObu, isFirstPacket, isLastPacket);
     
