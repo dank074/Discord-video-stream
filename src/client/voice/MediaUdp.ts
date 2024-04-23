@@ -7,6 +7,7 @@ import {
     VideoPacketizerH265
 } from '../packet/VideoPacketizerAnnexB';
 import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8';
+import { VideoPacketizerAV1 } from '../packet/VideoPacketizerAV1';
 import { normalizeVideoCodec } from '../../utils';
 import { BaseMediaConnection } from './BaseMediaConnection';
 
@@ -51,6 +52,9 @@ export class MediaUdp {
                 break;
             case "VP8":
                 this._videoPacketizer = new VideoPacketizerVP8(this);
+                break;
+            case "AV1":
+                this._videoPacketizer = new VideoPacketizerAV1(this);
                 break;
             default:
                 throw new Error(`Packetizer not implemented for ${videoCodec}`)
