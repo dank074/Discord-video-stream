@@ -8,11 +8,10 @@ import { Readable, Transform } from 'stream';
 import { H264NalSplitter, H265NalSplitter } from '../client/processing/AnnexBNalSplitter';
 import { VideoStream } from './VideoStream';
 import { normalizeVideoCodec } from '../utils';
-
-export let command: ffmpeg.FfmpegCommand;
+import PCancelable from 'p-cancelable';
 
 export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaUdp, includeAudio = true, customHeaders?: map) {
-    return new Promise<string>((resolve, reject) => {
+    return new PCancelable<string>((resolve, reject, onCancel) => {
         const streamOpts = mediaUdp.mediaConnection.streamOptions;
         const videoStream: VideoStream = new VideoStream(mediaUdp, streamOpts.fps, streamOpts.readAtNativeFps);
         const videoCodec = normalizeVideoCodec(streamOpts.videoCodec);
@@ -48,16 +47,14 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
         }
 
         try {
-            command = ffmpeg(input)
+            const command = ffmpeg(input)
                 .addOption('-loglevel', '0')
                 .addOption('-fflags', 'nobuffer')
                 .addOption('-analyzeduration', '0')
                 .on('end', () => {
-                    command = undefined;
                     resolve("video ended")
                 })
                 .on("error", (err, stdout, stderr) => {
-                    command = undefined;
                     reject('cannot play video ' + err.message)
                 })
                 .on('stderr', console.error);
@@ -144,10 +141,10 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
             }
 
             command.run();
+            onCancel(() => command.kill("SIGINT"));
         } catch (e) {
             //audioStream.end();
             //videoStream.end();
-            command = undefined;
             reject("cannot play video " + e.message);
         }
     })
