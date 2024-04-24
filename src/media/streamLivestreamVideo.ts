@@ -25,6 +25,7 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                 videoOutput = new H265NalSplitter();
                 break;
             case "VP8":
+            case "AV1":
                 videoOutput = new IvfTransformer();
                 break;
             default:
@@ -67,6 +68,14 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                     .videoBitrate(`${streamOpts.bitrateKbps}k`)
                     .format('ivf')
                     .outputOption('-deadline', 'realtime');
+            } else if (videoCodec === "AV1") {
+                command.output(StreamOutput(videoOutput).url, { end: false })
+                    .noAudio()
+                    .size(`${streamOpts.width}x${streamOpts.height}`)
+                    .fpsOutput(streamOpts.fps)
+                    .videoBitrate(`${streamOpts.bitrateKbps}k`)
+                    .videoCodec("libsvtav1")
+                    .format('ivf')
             } else if (videoCodec === "H265") {
                 command.output(StreamOutput(videoOutput).url, { end: false })
                     .noAudio()
