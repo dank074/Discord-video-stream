@@ -1,3 +1,3 @@
-export * from './client/index';
-export * from './media/index';
-export * as Utils from './utils';
+export * from './client/index.js';
+export * from './media/index.js';
+export * as Utils from './utils.js';

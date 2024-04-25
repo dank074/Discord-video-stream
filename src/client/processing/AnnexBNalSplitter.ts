@@ -5,7 +5,7 @@ import {
     H264NalUnitTypes,
     H265NalUnitTypes,
     type AnnexBHelpers
-} from "./AnnexBHelper";
+} from "./AnnexBHelper.js";
 
 const emptyBuffer = Buffer.allocUnsafe(0);
 const epbPrefix = Buffer.from([0x00, 0x00, 0x03]);
@@ -20,9 +20,15 @@ const nalSuffix = Buffer.from([0x00, 0x00, 0x01]);
  * unit is composed of 1 to n Nal units
  */
 class AnnexBNalSplitter extends Transform {
-    private _buffer: Buffer;
+    private _buffer: Buffer | null = null;
     private _accessUnit: Buffer[] = [];
-    protected _nalFunctions: AnnexBHelpers;
+    private _nalFunctions: AnnexBHelpers;
+
+    constructor(nalFunctions: AnnexBHelpers)
+    {
+        super();
+        this._nalFunctions = nalFunctions;
+    }
 
     /**
      * Removes emulation prevention bytes from a nalu frame
@@ -126,8 +132,7 @@ class AnnexBNalSplitter extends Transform {
 export class H264NalSplitter extends AnnexBNalSplitter {
     constructor()
     {
-        super();
-        this._nalFunctions = H264Helpers;
+        super(H264Helpers);
     }
     removeEpbs(frame: Buffer, unitType: number): Buffer {
         if (unitType === H264NalUnitTypes.SPS || unitType === H264NalUnitTypes.SEI)
@@ -139,8 +144,7 @@ export class H264NalSplitter extends AnnexBNalSplitter {
 export class H265NalSplitter extends AnnexBNalSplitter {
     constructor()
     {
-        super();
-        this._nalFunctions = H265Helpers;
+        super(H265Helpers);
     }
     removeEpbs(frame: Buffer, unitType: number): Buffer {
         // We do not remove the EPBS, since the encoder expects it to be there

@@ -1,5 +1,5 @@
-import { MediaUdp } from "../voice/MediaUdp";
-import { BaseMediaPacketizer, max_int16bit } from "./BaseMediaPacketizer";
+import { MediaUdp } from "../voice/MediaUdp.js";
+import { BaseMediaPacketizer, max_int16bit } from "./BaseMediaPacketizer.js";
 
 /**
  * VP8 payload format

@@ -1,10 +1,13 @@
-import { crypto_secretbox_easy } from "libsodium-wrappers";
-import { MediaUdp } from "../voice/MediaUdp";
+import _sodium from "libsodium-wrappers";
+import { MediaUdp } from "../voice/MediaUdp.js";
 
 export const max_int16bit = 2 ** 16;
 export const max_int32bit = 2 ** 32;
 
 const ntpEpoch = new Date("Jan 01 1900 GMT").getTime();
+
+await _sodium.ready;
+const crypto_secretbox_easy = _sodium.crypto_secretbox_easy;
 
 export class BaseMediaPacketizer {
     private _ssrc: number;
@@ -28,7 +31,9 @@ export class BaseMediaPacketizer {
         this._sequence = 0;
         this._timestamp = 0;
         this._totalBytes = 0;
+        this._totalPackets = 0;
         this._prevTotalPackets = 0;
+        this._lastPacketTime = 0;
         this._mtu = 1200;
         this._extensionEnabled = extensionEnabled;
 
@@ -154,7 +159,7 @@ export class BaseMediaPacketizer {
         const nonceBuffer = this._mediaUdp.getNewNonceBuffer();
         return Buffer.concat([
             packetHeader,
-            crypto_secretbox_easy(senderReport, nonceBuffer, this._mediaUdp.mediaConnection.secretkey),
+            crypto_secretbox_easy(senderReport, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!),
             nonceBuffer.subarray(0, 4)
         ]);
     }
@@ -214,7 +219,7 @@ export class BaseMediaPacketizer {
     // encrypts all data that is not in rtp header.
     // rtp header extensions and payload headers are also encrypted
     public encryptData(message: string | Uint8Array, nonceBuffer: Buffer) : Uint8Array {
-        return crypto_secretbox_easy(message, nonceBuffer, this._mediaUdp.mediaConnection.secretkey);
+        return crypto_secretbox_easy(message, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!);
     }
 
     public get mediaUdp(): MediaUdp {

@@ -1,5 +1,5 @@
 import { Writable } from "stream";
-import { MediaUdp } from "../client/voice/MediaUdp";
+import { MediaUdp } from "../client/voice/MediaUdp.js";
 
 export class VideoStream extends Writable {
     public udp: MediaUdp;

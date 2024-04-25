@@ -1,10 +1,10 @@
-import { VoiceOpCodes } from "../voice/VoiceOpCodes";
-import { BaseMediaConnection } from "./BaseMediaConnection";
+import { VoiceOpCodes } from "../voice/VoiceOpCodes.js";
+import { BaseMediaConnection } from "./BaseMediaConnection.js";
 
 export class StreamConnection extends BaseMediaConnection
 {
-    private _streamKey: string;
-    private _serverId: string;
+    private _streamKey: string | null = null;
+    private _serverId: string | null = null;
 
     public override setSpeaking(speaking: boolean): void {
         this.sendOpcode(VoiceOpCodes.SPEAKING, {
@@ -14,7 +14,7 @@ export class StreamConnection extends BaseMediaConnection
         });
     }
 
-    public override get serverId(): string {
+    public override get serverId(): string | null {
         return this._serverId;
     }
 
@@ -22,7 +22,7 @@ export class StreamConnection extends BaseMediaConnection
         this._serverId = id;
     }
 
-    public get streamKey(): string {
+    public get streamKey(): string | null {
         return this._streamKey;
     }
     public set streamKey(value: string) {

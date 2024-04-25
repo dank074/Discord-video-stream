@@ -1,10 +1,10 @@
-import { MediaUdp } from "../voice/MediaUdp";
-import { BaseMediaPacketizer } from "./BaseMediaPacketizer";
+import { MediaUdp } from "../voice/MediaUdp.js";
+import { BaseMediaPacketizer } from "./BaseMediaPacketizer.js";
 import {
     H264Helpers,
     H265Helpers,
     type AnnexBHelpers
-} from "../processing/AnnexBHelper";
+} from "../processing/AnnexBHelper.js";
 
 /**
  * Annex B format
@@ -56,11 +56,12 @@ import {
          ...
  */
 class VideoPacketizerAnnexB extends BaseMediaPacketizer {
-    protected _nalFunctions: AnnexBHelpers;
+    private _nalFunctions: AnnexBHelpers;
 
-    constructor(connection: MediaUdp) {
+    constructor(connection: MediaUdp, nalFunctions: AnnexBHelpers) {
         super(connection, 0x65, true);
         this.srInterval = 5 * connection.mediaConnection.streamOptions.fps * 3; // ~5 seconds, assuming ~3 packets per frame
+        this._nalFunctions = nalFunctions;
     }
 
     /**
@@ -158,8 +159,7 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
 
 export class VideoPacketizerH264 extends VideoPacketizerAnnexB {
     constructor(connection: MediaUdp) {
-        super(connection);
-        this._nalFunctions = H264Helpers;
+        super(connection, H264Helpers);
     }
     /**
      * The FU indicator octet has the following format:
@@ -215,8 +215,7 @@ export class VideoPacketizerH264 extends VideoPacketizerAnnexB {
 
 export class VideoPacketizerH265 extends VideoPacketizerAnnexB {
     constructor(connection: MediaUdp) {
-        super(connection);
-        this._nalFunctions = H265Helpers;
+        super(connection, H265Helpers);
     }
     /**
      * The FU indicator octet has the following format:

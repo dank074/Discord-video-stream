@@ -1,13 +1,13 @@
 import ffmpeg from 'fluent-ffmpeg';
-import { IvfTransformer } from "../client/processing/IvfSplitter";
+import { IvfTransformer } from "../client/processing/IvfSplitter.js";
 import prism from "prism-media";
-import { AudioStream } from "./AudioStream";
-import { MediaUdp } from '../client/voice/MediaUdp';
+import { AudioStream } from "./AudioStream.js";
+import { MediaUdp } from '../client/voice/MediaUdp.js';
 import { StreamOutput } from '@dank074/fluent-ffmpeg-multistream-ts';
 import { Readable, Transform } from 'stream';
-import { H264NalSplitter, H265NalSplitter } from '../client/processing/AnnexBNalSplitter';
-import { VideoStream } from './VideoStream';
-import { normalizeVideoCodec } from '../utils';
+import { H264NalSplitter, H265NalSplitter } from '../client/processing/AnnexBNalSplitter.js';
+import { VideoStream } from './VideoStream.js';
+import { normalizeVideoCodec } from '../utils.js';
 import PCancelable from 'p-cancelable';
 
 export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaUdp, includeAudio = true, customHeaders?: map) {
@@ -145,7 +145,7 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
         } catch (e) {
             //audioStream.end();
             //videoStream.end();
-            reject("cannot play video " + e.message);
+            reject("cannot play video " + (e as Error).message);
         }
     })
 }

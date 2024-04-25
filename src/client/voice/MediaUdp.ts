@@ -1,14 +1,14 @@
 import udpCon from 'dgram';
 import { isIPv4 } from 'net';
-import { AudioPacketizer } from '../packet/AudioPacketizer';
-import { BaseMediaPacketizer, max_int32bit } from '../packet/BaseMediaPacketizer';
+import { AudioPacketizer } from '../packet/AudioPacketizer.js';
+import { BaseMediaPacketizer, max_int32bit } from '../packet/BaseMediaPacketizer.js';
 import {
     VideoPacketizerH264,
     VideoPacketizerH265
-} from '../packet/VideoPacketizerAnnexB';
-import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8';
-import { normalizeVideoCodec } from '../../utils';
-import { BaseMediaConnection } from './BaseMediaConnection';
+} from '../packet/VideoPacketizerAnnexB.js';
+import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8.js';
+import { normalizeVideoCodec } from '../../utils.js';
+import { BaseMediaConnection } from './BaseMediaConnection.js';
 
 // credit to discord.js
 function parseLocalPacket(message: Buffer) {
@@ -29,8 +29,8 @@ function parseLocalPacket(message: Buffer) {
 export class MediaUdp {
     private _mediaConnection: BaseMediaConnection;
     private _nonce: number;
-    private _socket: udpCon.Socket;
-    private _ready: boolean;
+    private _socket: udpCon.Socket | null = null;
+    private _ready: boolean = false;
     private _audioPacketizer: BaseMediaPacketizer;
     private _videoPacketizer: BaseMediaPacketizer;
 
@@ -88,10 +88,10 @@ export class MediaUdp {
         this.videoPacketizer.sendFrame(frame);
     }
 
-    public sendPacket(packet: any): Promise<void> {
+    public sendPacket(packet: Buffer): Promise<void> {
         return new Promise<void>((resolve, reject) => {
             try {
-            this._socket.send(packet, 0, packet.length, this._mediaConnection.port, this._mediaConnection.address, (error, bytes) => {
+            this._socket?.send(packet, 0, packet.length, this._mediaConnection.port!, this._mediaConnection.address!, (error, bytes) => {
                 if (error) {
                     console.log("ERROR", error);
                     reject(error);
@@ -136,23 +136,20 @@ export class MediaUdp {
                 }
                 try {
                     const packet = parseLocalPacket(message);
-
-                    this._mediaConnection.self_ip = packet.ip;
-                    this._mediaConnection.self_port = packet.port;
-                    this._mediaConnection.setProtocols();
+                    this._mediaConnection.setProtocols(packet.ip, packet.port);
                 } catch(e) { reject(e) }
                 
                 resolve();
-                this._socket.on('message', this.handleIncoming);
+                this._socket!.on('message', this.handleIncoming);
             });
 
             const blank = Buffer.alloc(74);
             
             blank.writeUInt16BE(1, 0);
 			blank.writeUInt16BE(70, 2);
-            blank.writeUInt32BE(this._mediaConnection.ssrc, 4);
+            blank.writeUInt32BE(this._mediaConnection.ssrc!, 4);
 
-            this._socket.send(blank, 0, blank.length, this._mediaConnection.port, this._mediaConnection.address, (error, bytes) => {
+            this._socket.send(blank, 0, blank.length, this._mediaConnection.port!, this._mediaConnection.address!, (error, bytes) => {
                 if (error) {
                     reject(error)
                 }

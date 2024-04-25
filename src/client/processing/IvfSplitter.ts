@@ -20,8 +20,8 @@ type IvfHeader = {
 class IvfTransformer extends Transform {
     public headerSize: number;
     public frameHeaderSize: number;
-    public header: IvfHeader;
-    public buf: Buffer;
+    public header: IvfHeader | null;
+    public buf: Buffer | null;
     public retFullFrame: boolean;
 
     constructor(options?: any) {
@@ -77,8 +77,8 @@ class IvfTransformer extends Transform {
     }
 
     _updateBufLen(size: number) {
-        if (this.buf.length > size)
-            this.buf = this.buf.subarray(size, this.buf.length);
+        if (this.buf!.length > size)
+            this.buf = this.buf!.subarray(size, this.buf!.length);
         else
             this.buf = null;
     }
@@ -88,8 +88,8 @@ class IvfTransformer extends Transform {
         
         // parse header
         if (!this.header) {
-            if (this.buf.length >= this.headerSize) {
-                this._parseHeader(this.buf.subarray(0, this.headerSize));
+            if (this.buf!.length >= this.headerSize) {
+                this._parseHeader(this.buf!.subarray(0, this.headerSize));
                 this._updateBufLen(this.headerSize);
             }
             else {

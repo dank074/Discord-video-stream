@@ -2,8 +2,9 @@
   "name": "@dank074/discord-video-stream",
   "version": "3.2.0",
   "description": "Experiment for making video streaming work for discord selfbots",
-  "main": "dist/index.js",
+  "exports": "./dist/index.js",
   "types": "dist/index.d.ts",
+  "type": "module",
   "files": [
     "dist",
     "src"

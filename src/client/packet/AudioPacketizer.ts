@@ -1,5 +1,5 @@
-import { MediaUdp } from "../voice/MediaUdp";
-import { BaseMediaPacketizer } from "./BaseMediaPacketizer";
+import { MediaUdp } from "../voice/MediaUdp.js";
+import { BaseMediaPacketizer } from "./BaseMediaPacketizer.js";
 
 const frame_size = (48000 / 100) * 2;
 
