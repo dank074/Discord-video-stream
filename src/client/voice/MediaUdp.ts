@@ -1,13 +1,13 @@
 import udpCon from 'dgram';
 import { isIPv4 } from 'net';
 import { AudioPacketizer } from '../packet/AudioPacketizer.js';
-import { BaseMediaPacketizer, max_int32bit } from '../packet/BaseMediaPacketizer.js';
+import { BaseMediaPacketizer } from '../packet/BaseMediaPacketizer.js';
 import {
     VideoPacketizerH264,
     VideoPacketizerH265
 } from '../packet/VideoPacketizerAnnexB.js';
 import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8.js';
-import { normalizeVideoCodec } from '../../utils.js';
+import { max_int32bit, normalizeVideoCodec, SupportedEncryptionModes } from '../../utils.js';
 import { BaseMediaConnection } from './BaseMediaConnection.js';
 
 // credit to discord.js
@@ -24,7 +24,6 @@ function parseLocalPacket(message: Buffer) {
 
 	return { ip, port };
 }
-  
 
 export class MediaUdp {
     private _mediaConnection: BaseMediaConnection;
@@ -33,6 +32,7 @@ export class MediaUdp {
     private _ready: boolean = false;
     private _audioPacketizer: BaseMediaPacketizer;
     private _videoPacketizer: BaseMediaPacketizer;
+    private _encryptionMode: SupportedEncryptionModes | undefined;
 
     constructor(voiceConnection: BaseMediaConnection) {
         this._nonce = 0;
@@ -58,7 +58,7 @@ export class MediaUdp {
     }
 
     public getNewNonceBuffer(): Buffer {
-        const nonceBuffer = Buffer.alloc(24)
+        const nonceBuffer = this._encryptionMode === SupportedEncryptionModes.AES256 ? Buffer.alloc(12) : Buffer.alloc(24);
         this._nonce = (this._nonce + 1) % max_int32bit;
         
         nonceBuffer.writeUInt32BE(this._nonce, 0);
@@ -75,6 +75,14 @@ export class MediaUdp {
 
     public get mediaConnection(): BaseMediaConnection {
         return this._mediaConnection;
+    }
+
+    public get encryptionMode(): SupportedEncryptionModes | undefined {
+        return this._encryptionMode;
+    }
+
+    public set encryptionMode(mode: SupportedEncryptionModes) {
+        this._encryptionMode = mode;
     }
 
     public sendAudioFrame(frame: any): void{

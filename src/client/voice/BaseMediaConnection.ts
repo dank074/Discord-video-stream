@@ -1,8 +1,9 @@
 import { VoiceOpCodes } from "./VoiceOpCodes.js";
 import { MediaUdp } from "./MediaUdp.js";
-import { normalizeVideoCodec } from "../../utils.js";
-import type { ReadyMessage, SessionMessage } from "./VoiceMessageTypes.js";
+import { normalizeVideoCodec, STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
+import type { ReadyMessage, SelectProtocolAck } from "./VoiceMessageTypes.js";
 import WebSocket from 'ws';
+import { assert } from "node:console";
 
 type VoiceConnectionStatus =
 {
@@ -11,8 +12,6 @@ type VoiceConnectionStatus =
     started: boolean;
     resuming: boolean;
 }
-
-export type SupportedVideoCodec = "H264" | "H265" | "VP8" | "VP9" | "AV1";
 
 export interface StreamOptions {
     /**
@@ -88,7 +87,6 @@ export abstract class BaseMediaConnection {
     public ssrc: number | null = null;
     public videoSsrc: number | null = null;
     public rtxSsrc: number | null = null;
-    public modes: string[] | null = null;
     public secretkey: Uint8Array | null = null;
     private _streamOptions: StreamOptions;
 
@@ -188,15 +186,26 @@ export abstract class BaseMediaConnection {
         this.ssrc = d.ssrc;
         this.address = d.ip;
         this.port = d.port;
-        this.modes = d.modes;
-        this.videoSsrc = this.ssrc + 1; // todo: set it from packet streams object
-        this.rtxSsrc = this.ssrc + 2;
 
+        // select encryption mode
+        // From Discord docs: 
+        // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
+        if(d.modes.includes(SupportedEncryptionModes.AES256)) {
+            this.udp.encryptionMode = SupportedEncryptionModes.AES256
+        } else {
+            this.udp.encryptionMode = SupportedEncryptionModes.XCHACHA20
+        }
+
+        // we hardcoded the STREAMS_SIMULCAST, which will always be array of 1
+        const stream = d.streams[0];
+        this.videoSsrc = stream.ssrc;
+        this.rtxSsrc = stream.rtx_ssrc;
+        
         this.udp.audioPacketizer.ssrc = this.ssrc;
         this.udp.videoPacketizer.ssrc = this.videoSsrc;
     }
 
-    handleSession(d: SessionMessage): void {
+    handleProtocolAck(d: SelectProtocolAck): void {
         this.secretkey = new Uint8Array(d.secret_key);
 
         this.ready(this.udp);
@@ -219,7 +228,7 @@ export abstract class BaseMediaConnection {
                 this.setupHeartbeat(d.heartbeat_interval);
             }
             else if (op === VoiceOpCodes.SELECT_PROTOCOL_ACK) { // session description
-                this.handleSession(d);
+                this.handleProtocolAck(d);
             }
             else if (op === VoiceOpCodes.SPEAKING) {
                 // ignore speaking updates
@@ -263,9 +272,7 @@ export abstract class BaseMediaConnection {
             session_id: this.session_id,
             token: this.token,
             video: true,
-            streams: [
-                { type:"screen", rid:"100", quality:100 }
-            ]
+            streams: STREAMS_SIMULCAST
         });
     }
 
@@ -294,8 +301,11 @@ export abstract class BaseMediaConnection {
             data: {
                 address: ip,
                 port: port,
-                mode: "xsalsa20_poly1305_lite"
-            }
+                mode: this.udp.encryptionMode
+            },
+            address: ip,
+            port: port,
+            mode: this.udp.encryptionMode
         });
     }
 

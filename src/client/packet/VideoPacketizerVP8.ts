@@ -1,5 +1,6 @@
+import { max_int16bit } from "../../utils.js";
 import { MediaUdp } from "../voice/MediaUdp.js";
-import { BaseMediaPacketizer, max_int16bit } from "./BaseMediaPacketizer.js";
+import { BaseMediaPacketizer } from "./BaseMediaPacketizer.js";
 
 /**
  * VP8 payload format
@@ -36,13 +37,13 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
     public createPacket(chunk: any, isLastPacket = true, isFirstPacket = true): Buffer {
         if(chunk.length > this.mtu) throw Error('error packetizing video frame: frame is larger than mtu');
 
-        const packetHeader = this.makeRtpHeader(isLastPacket);
+        const packetHeader = Buffer.concat([this.makeRtpHeader(isLastPacket), this.createExtensionHeader()]);
 
-        const packetData = this.makeChunk(chunk, isFirstPacket);
+        const packetData = Buffer.concat([this.createExtensionPayload(), this.makeChunk(chunk, isFirstPacket)]);
     
         // nonce buffer used for encryption. 4 bytes are appended to end of packet
         const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
-        return Buffer.concat([packetHeader, this.encryptData(packetData, nonceBuffer), nonceBuffer.subarray(0, 4)]);
+        return Buffer.concat([packetHeader, this.encryptData(packetData, nonceBuffer, packetHeader), nonceBuffer.subarray(0, 4)]);
     }
 
     public override onFrameSent(packetsSent: number, bytesSent: number): void {
@@ -53,8 +54,6 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
     }
 
     private makeChunk(frameData:any, isFirstPacket: boolean): Buffer {
-        const headerExtensionBuf = this.createHeaderExtension();
-    
         // vp8 payload descriptor
         const payloadDescriptorBuf = Buffer.alloc(2);
     
@@ -70,6 +69,6 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         pictureIdBuf.writeUIntBE(this._pictureId, 0, 2);
         pictureIdBuf[0] |= 0b10000000;
     
-        return Buffer.concat([headerExtensionBuf, payloadDescriptorBuf, pictureIdBuf, frameData]);
+        return Buffer.concat([payloadDescriptorBuf, pictureIdBuf, frameData]);
     }
 }

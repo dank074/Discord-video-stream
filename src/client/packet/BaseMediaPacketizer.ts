@@ -1,13 +1,11 @@
 import _sodium from "libsodium-wrappers";
+import crypto from 'node:crypto';
 import { MediaUdp } from "../voice/MediaUdp.js";
-
-export const max_int16bit = 2 ** 16;
-export const max_int32bit = 2 ** 32;
+import { extensions, max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
 
 const ntpEpoch = new Date("Jan 01 1900 GMT").getTime();
 
 await _sodium.ready;
-const crypto_secretbox_easy = _sodium.crypto_secretbox_easy;
 
 export class BaseMediaPacketizer {
     private _ssrc: number;
@@ -159,31 +157,37 @@ export class BaseMediaPacketizer {
         const nonceBuffer = this._mediaUdp.getNewNonceBuffer();
         return Buffer.concat([
             packetHeader,
-            crypto_secretbox_easy(senderReport, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!),
+            this.encryptData(senderReport, nonceBuffer, packetHeader),
             nonceBuffer.subarray(0, 4)
         ]);
     }
 
     /**
-     * Creates a single extension of type playout-delay
-     * Discord seems to send this extension on every video packet 
-     * @see https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/playout-delay 
-     * @returns playout-delay extension @type Buffer
+     * Creates a one-byte extension header
+     * https://www.rfc-editor.org/rfc/rfc5285#section-4.2
+     * @returns extension header
      */
-    public createHeaderExtension(): Buffer {
-        const extensions = [{ id: 5, len: 2, val: 0}];
-
+    public createExtensionHeader(): Buffer {
         /**
          *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
             |      defined by profile       |           length              |
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
         */
-        const profile = Buffer.alloc(4);
-        profile[0] = 0xBE;
-        profile[1] = 0xDE;
-        profile.writeInt16BE(extensions.length, 2); // extension count
-        
+            const profile = Buffer.alloc(4);
+            profile[0] = 0xBE;
+            profile[1] = 0xDE;
+            profile.writeInt16BE(extensions.length, 2); // extension count
+
+            return profile
+    }
+
+    /**
+     * Creates a extension payload in one-byte format according to https://www.rfc-editor.org/rfc/rfc7941.html#section-4.1.1
+     * Discord seems to send this extension on every video packet 
+     * @returns extension payload
+     */
+    public createExtensionPayload(): Buffer {
         const extensionsData = [];
         for(let ext of extensions){
             /**
@@ -191,35 +195,94 @@ export class BaseMediaPacketizer {
              */
             const data = Buffer.alloc(4);
 
-            /**
-             *  0 1 2 3 4 5 6 7
-                +-+-+-+-+-+-+-+-+
-                |  ID   |  len  |
-                +-+-+-+-+-+-+-+-+
+            // https://webrtc.googlesource.com/src/+/refs/heads/main/docs/native-code/rtp-hdrext/playout-delay
+            if(ext.id === 5) {
+                /**
+                 *  0 1 2 3 4 5 6 7
+                    +-+-+-+-+-+-+-+-+
+                    |  ID   |  len  |
+                    +-+-+-+-+-+-+-+-+
 
-            where len = actual length - 1
-            */
-            data[0] = (ext.id & 0b00001111) << 4;
-            data[0] |= ((ext.len - 1) & 0b00001111);
+                where len = actual length - 1
+                */
+                data[0] = (ext.id & 0b00001111) << 4;
+                data[0] |= ((ext.len - 1) & 0b00001111);
 
-            /**  Specific to type playout-delay
-             *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
-                +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-                |       MIN delay       |       MAX delay       |
-                +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
-            */
-            data.writeUIntBE(ext.val, 1, 2); // not quite but its 0 anyway
+                /**  Specific to type playout-delay
+                 *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4
+                    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                    |       MIN delay       |       MAX delay       |
+                    +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+                */
+                data.writeUIntBE(ext.val, 1, 2); // not quite but its 0 anyway
+            }
 
             extensionsData.push(data);
         }
 
-        return Buffer.concat([profile, ...extensionsData])
+        return Buffer.concat(extensionsData)
     }
 
-    // encrypts all data that is not in rtp header.
-    // rtp header extensions and payload headers are also encrypted
-    public encryptData(message: string | Uint8Array, nonceBuffer: Buffer) : Uint8Array {
-        return crypto_secretbox_easy(message, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!);
+    /**
+     * Encrypt packet payload. Encrpyed Payload is determined to be
+     * according to https://tools.ietf.org/html/rfc3711#section-3.1
+     * and https://datatracker.ietf.org/doc/html/rfc7714#section-8.2
+     * 
+     * Associated Data: The version V (2 bits), padding flag P (1 bit),
+                       extension flag X (1 bit), Contributing Source
+                       (CSRC) count CC (4 bits), marker M (1 bit),
+                       Payload Type PT (7 bits), sequence number
+                       (16 bits), timestamp (32 bits), SSRC (32 bits),
+                       optional CSRC identifiers (32 bits each), and
+                       optional RTP extension (variable length).
+
+      Plaintext:       The RTP payload (variable length), RTP padding
+                       (if used, variable length), and RTP pad count (if
+                       used, 1 octet).
+
+      Raw Data:        The optional variable-length SRTP Master Key
+                       Identifier (MKI) and SRTP authentication tag
+                       (whose use is NOT RECOMMENDED).  These fields are
+                       appended after encryption has been performed.
+
+        0                   1                   2                   3
+        0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    A  |V=2|P|X|  CC   |M|     PT      |       sequence number         |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    A  |                           timestamp                           |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    A  |           synchronization source (SSRC) identifier            |
+       +=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+=+
+    A  |      contributing source (CSRC) identifiers (optional)        |
+    A  |                               ....                            |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    A  |                   RTP extension header (OPTIONAL)             |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+    P  |                          payload  ...                         |
+    P  |                               +-------------------------------+
+    P  |                               | RTP padding   | RTP pad count |
+       +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+
+                P = Plaintext (to be encrypted and authenticated)
+                A = Associated Data (to be authenticated only)
+     * @param plaintext 
+     * @param nonceBuffer
+     * @param additionalData 
+     * @returns ciphertext
+     */
+    public encryptData(plaintext: string | Uint8Array, nonceBuffer: Buffer, additionalData: Buffer) : Uint8Array {
+        switch(this._mediaUdp.encryptionMode) {
+            case SupportedEncryptionModes.AES256:
+                const cipher = crypto.createCipheriv('aes-256-gcm', this._mediaUdp.mediaConnection.secretkey!, nonceBuffer);
+				cipher.setAAD(additionalData);
+
+				return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
+            case SupportedEncryptionModes.XCHACHA20:
+                return _sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plaintext, additionalData, null, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!)
+            default:
+                throw new Error("Unsupported encryption mode")
+        }
     }
 
     public get mediaUdp(): MediaUdp {

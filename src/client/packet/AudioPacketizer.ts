@@ -20,7 +20,7 @@ export class AudioPacketizer extends BaseMediaPacketizer {
         const header = this.makeRtpHeader();
 
         const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
-        return Buffer.concat([header, this.encryptData(chunk, nonceBuffer), nonceBuffer.subarray(0, 4)]);
+        return Buffer.concat([header, this.encryptData(chunk, nonceBuffer, header), nonceBuffer.subarray(0, 4)]);
     }
 
     public override onFrameSent(bytesSent: number): void {

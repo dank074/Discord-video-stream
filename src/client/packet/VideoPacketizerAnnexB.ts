@@ -91,16 +91,12 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
             const isLastNal = index === nalus.length - 1;
             if (nalu.length <= this.mtu) {
                 // Send as Single NAL Unit Packet.
-                const packetHeader = this.makeRtpHeader(isLastNal);
-                const packetData = Buffer.concat([
-                    this.createHeaderExtension(),
-                    nalu,
-                ]);
+                const packetHeader = Buffer.concat([this.makeRtpHeader(isLastNal), this.createExtensionHeader()]);
 
                 const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
                 const packet = Buffer.concat([
                     packetHeader,
-                    this.encryptData(packetData, nonceBuffer),
+                    this.encryptData(Buffer.concat([this.createExtensionPayload(), nalu]), nonceBuffer, packetHeader),
                     nonceBuffer.subarray(0, 4),
                 ]);
                 this.mediaUdp.sendPacket(packet);
@@ -117,10 +113,10 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
 
                     const markerBit = isLastNal && isFinalPacket;
 
-                    const packetHeader = this.makeRtpHeader(markerBit);
+                    const packetHeader = Buffer.concat([this.makeRtpHeader(markerBit), this.createExtensionHeader()]);
 
                     const packetData = Buffer.concat([
-                        this.createHeaderExtension(),
+                        this.createExtensionPayload(),
                         this.makeFragmentationUnitHeader(
                             isFirstPacket,
                             isFinalPacket,
@@ -132,7 +128,7 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                     const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
                     const packet = Buffer.concat([
                         packetHeader,
-                        this.encryptData(packetData, nonceBuffer),
+                        this.encryptData(packetData, nonceBuffer, packetHeader),
                         nonceBuffer.subarray(0, 4),
                     ]);
                     this.mediaUdp.sendPacket(packet);
@@ -191,7 +187,7 @@ export class VideoPacketizerH264 extends VideoPacketizerAnnexB {
  * @param naluHeader
  * @returns FU-A packets
  */
-    protected makeFragmentationUnitHeader(isFirstPacket: boolean, isLastPacket: boolean, naluHeader: Buffer): Buffer {
+    protected override makeFragmentationUnitHeader(isFirstPacket: boolean, isLastPacket: boolean, naluHeader: Buffer): Buffer {
         const nal0 = naluHeader[0];
         const fuPayloadHeader = Buffer.alloc(2);
         const nalType = H264Helpers.getUnitType(naluHeader);
@@ -246,7 +242,7 @@ export class VideoPacketizerH265 extends VideoPacketizerAnnexB {
  * @param naluHeader
  * @returns FU-A packets
  */
-    protected makeFragmentationUnitHeader(isFirstPacket: boolean, isLastPacket: boolean, naluHeader: Buffer): Buffer {
+    protected override makeFragmentationUnitHeader(isFirstPacket: boolean, isLastPacket: boolean, naluHeader: Buffer): Buffer {
         const fuIndicatorHeader = Buffer.allocUnsafe(3);
         naluHeader.copy(fuIndicatorHeader);
         const nalType = H265Helpers.getUnitType(naluHeader);
