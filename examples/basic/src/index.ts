@@ -1,8 +1,10 @@
 import { Client, StageChannel } from "discord.js-selfbot-v13";
-import { command, streamLivestreamVideo, MediaUdp, getInputMetadata, inputHasAudio, Streamer } from "@dank074/discord-video-stream";
-import config from "./config.json";
+import { streamLivestreamVideo, MediaUdp, getInputMetadata, inputHasAudio, Streamer, Utils } from "@dank074/discord-video-stream";
+import config from "./config.json" with {type: "json"};
+import PCancelable from "p-cancelable";
 
 const streamer = new Streamer(new Client());
+let command: PCancelable<string>;
 
 // ready event
 streamer.client.on("ready", () => {
@@ -40,7 +42,7 @@ streamer.client.on("messageCreate", async (msg) => {
             bitrateKbps: config.streamOpts.bitrateKbps,
             maxBitrateKbps: config.streamOpts.maxBitrateKbps, 
             hardwareAcceleratedDecoding: config.streamOpts.hardware_acceleration,
-            videoCodec: config.streamOpts.videoCodec === 'H264' ? 'H264' : 'VP8'
+            videoCodec: Utils.normalizeVideoCodec(config.streamOpts.videoCodec)
         });
 
         await playVideo(args.url, streamUdpConn);
@@ -63,7 +65,7 @@ streamer.client.on("messageCreate", async (msg) => {
             bitrateKbps: config.streamOpts.bitrateKbps,
             maxBitrateKbps: config.streamOpts.maxBitrateKbps, 
             hardwareAcceleratedDecoding: config.streamOpts.hardware_acceleration,
-            videoCodec: config.streamOpts.videoCodec === 'H264' ? 'H264' : 'VP8'
+            videoCodec: Utils.normalizeVideoCodec(config.streamOpts.videoCodec)
         });
 
         if(channel instanceof StageChannel)
@@ -77,11 +79,11 @@ streamer.client.on("messageCreate", async (msg) => {
 
         return;
     } else if (msg.content.startsWith("$disconnect")) {
-        command?.kill("SIGINT");
+        command?.cancel()
 
         streamer.leaveVoice();
     } else if(msg.content.startsWith("$stop-stream")) {
-        command?.kill('SIGINT');
+        command?.cancel()
 
         const stream = streamer.voiceConnection?.streamConnection;
 
@@ -111,16 +113,21 @@ async function playVideo(video: string, udpConn: MediaUdp) {
     udpConn.mediaConnection.setSpeaking(true);
     udpConn.mediaConnection.setVideoStatus(true);
     try {
-        const res = await streamLivestreamVideo(video, udpConn, includeAudio);
+        command = streamLivestreamVideo(video, udpConn, includeAudio);
 
+        const res = await command;
         console.log("Finished playing video " + res);
     } catch (e) {
-        console.log(e);
+        if (command.isCanceled) {
+            // Handle the cancelation here
+            console.log('Operation was canceled');
+        } else {
+            console.log(e);
+        }
     } finally {
         udpConn.mediaConnection.setSpeaking(false);
         udpConn.mediaConnection.setVideoStatus(false);
     }
-    command?.kill("SIGINT");
 }
 
 function parseArgs(message: string): Args | undefined {

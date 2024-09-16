@@ -4,14 +4,15 @@
     "description": "",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
+    "type": "module",
     "dependencies": {
-        "@dank074/discord-video-stream": "3.2.0",
+        "@dank074/discord-video-stream": "file:../..",
         "@discordjs/opus": "^0.9.0",
         "discord.js-selfbot-v13": "^3.1.4"
     },
     "devDependencies": {
         "@types/node": "^18.14.1",
-        "typescript": "^4.9.5"
+        "typescript": "^5.6.2"
     },
     "scripts": {
         "build": "tsc",
