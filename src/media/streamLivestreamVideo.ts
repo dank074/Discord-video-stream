@@ -106,7 +106,7 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
             videoOutput.pipe(videoStream, { end: false });
 
             if (includeAudio) {
-                const audioStream: AudioStream = new AudioStream(mediaUdp);
+                const audioStream: AudioStream = new AudioStream(mediaUdp, streamOpts.readAtNativeFps);
 
                 // make opus stream
                 const opus = new prism.opus.Encoder({ channels: 2, rate: 48000, frameSize: 960 });

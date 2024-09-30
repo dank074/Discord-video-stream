@@ -272,12 +272,12 @@ export class BaseMediaPacketizer {
      * @returns ciphertext
      */
     public encryptData(plaintext: string | Uint8Array, nonceBuffer: Buffer, additionalData: Buffer) : Uint8Array {
-        switch(this._mediaUdp.encryptionMode) {
+        switch (this._mediaUdp.encryptionMode) {
             case SupportedEncryptionModes.AES256:
                 const cipher = crypto.createCipheriv('aes-256-gcm', this._mediaUdp.mediaConnection.secretkey!, nonceBuffer);
-				cipher.setAAD(additionalData);
+                cipher.setAAD(additionalData);
 
-				return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
+                return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
             case SupportedEncryptionModes.XCHACHA20:
                 return _sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plaintext, additionalData, null, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!)
             default:
