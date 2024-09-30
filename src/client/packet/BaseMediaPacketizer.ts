@@ -1,7 +1,7 @@
 import _sodium from "libsodium-wrappers";
 import crypto from 'node:crypto';
 import { MediaUdp } from "../voice/MediaUdp.js";
-import { extensions, max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
+import { max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
 
 const ntpEpoch = new Date("Jan 01 1900 GMT").getTime();
 
@@ -167,7 +167,7 @@ export class BaseMediaPacketizer {
      * https://www.rfc-editor.org/rfc/rfc5285#section-4.2
      * @returns extension header
      */
-    public createExtensionHeader(): Buffer {
+    public createExtensionHeader(extensions: { id: number, len: number, val: number}[]): Buffer {
         /**
          *  0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
             +-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
@@ -184,10 +184,11 @@ export class BaseMediaPacketizer {
 
     /**
      * Creates a extension payload in one-byte format according to https://www.rfc-editor.org/rfc/rfc7941.html#section-4.1.1
-     * Discord seems to send this extension on every video packet 
+     * Discord seems to send this extension on every video packet. The extension ids for Discord can be found by connecting
+     * to their webrtc gateway using the webclient and the client will send an SDP offer containing it
      * @returns extension payload
      */
-    public createExtensionPayload(): Buffer {
+    public createExtensionPayload(extensions: { id: number, len: number, val: number}[]): Buffer {
         const extensionsData = [];
         for(let ext of extensions){
             /**

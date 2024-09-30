@@ -5,6 +5,7 @@ import {
     H265Helpers,
     type AnnexBHelpers
 } from "../processing/AnnexBHelper.js";
+import { extensions } from "../../utils.js";
 
 /**
  * Annex B format
@@ -91,12 +92,12 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
             const isLastNal = index === nalus.length - 1;
             if (nalu.length <= this.mtu) {
                 // Send as Single NAL Unit Packet.
-                const packetHeader = Buffer.concat([this.makeRtpHeader(isLastNal), this.createExtensionHeader()]);
+                const packetHeader = Buffer.concat([this.makeRtpHeader(isLastNal), this.createExtensionHeader(extensions)]);
 
                 const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
                 const packet = Buffer.concat([
                     packetHeader,
-                    this.encryptData(Buffer.concat([this.createExtensionPayload(), nalu]), nonceBuffer, packetHeader),
+                    this.encryptData(Buffer.concat([this.createExtensionPayload(extensions), nalu]), nonceBuffer, packetHeader),
                     nonceBuffer.subarray(0, 4),
                 ]);
                 this.mediaUdp.sendPacket(packet);
@@ -113,10 +114,10 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
 
                     const markerBit = isLastNal && isFinalPacket;
 
-                    const packetHeader = Buffer.concat([this.makeRtpHeader(markerBit), this.createExtensionHeader()]);
+                    const packetHeader = Buffer.concat([this.makeRtpHeader(markerBit), this.createExtensionHeader(extensions)]);
 
                     const packetData = Buffer.concat([
-                        this.createExtensionPayload(),
+                        this.createExtensionPayload(extensions),
                         this.makeFragmentationUnitHeader(
                             isFirstPacket,
                             isFinalPacket,
