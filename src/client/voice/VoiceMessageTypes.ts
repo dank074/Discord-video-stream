@@ -16,7 +16,7 @@ type StreamInfo = {
     /**
      * always "video" from what I observed
      */
-    type: "string"
+    type: string
 }
 
 export type SelectProtocolAck = {
