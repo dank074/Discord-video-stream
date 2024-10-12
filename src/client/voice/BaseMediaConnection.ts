@@ -55,6 +55,16 @@ export interface StreamOptions {
      * Encoding preset for H264 or H265. The faster it is, the lower the quality
      */
     h26xPreset: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow' | 'slower' | 'veryslow';
+    /**
+     * Adds ffmpeg params to minimize latency and start outputting video as fast as possible.
+     * Might create lag in video output in some rare cases
+     */
+    minimizeLatency: boolean;
+
+    /**
+     * ChaCha20-Poly1305 Encryption is faster than AES-256-GCM, except when using AES-NI
+     */
+    forceChacha20Encryption: boolean;
 }
 
 const defaultStreamOptions: StreamOptions = {
@@ -68,6 +78,8 @@ const defaultStreamOptions: StreamOptions = {
     readAtNativeFps: true,
     rtcpSenderReportEnabled: true,
     h26xPreset: 'ultrafast',
+    minimizeLatency: true,
+    forceChacha20Encryption: false,
 }
 
 export abstract class BaseMediaConnection {
@@ -190,7 +202,7 @@ export abstract class BaseMediaConnection {
         // select encryption mode
         // From Discord docs: 
         // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
-        if(d.modes.includes(SupportedEncryptionModes.AES256)) {
+        if(d.modes.includes(SupportedEncryptionModes.AES256) && !this.streamOptions.forceChacha20Encryption) {
             this.udp.encryptionMode = SupportedEncryptionModes.AES256
         } else {
             this.udp.encryptionMode = SupportedEncryptionModes.XCHACHA20

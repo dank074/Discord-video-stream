@@ -49,8 +49,6 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
         try {
             const command = ffmpeg(input)
                 .addOption('-loglevel', '0')
-                .addOption('-fflags', 'nobuffer')
-                .addOption('-analyzeduration', '0')
                 .on('end', () => {
                     resolve("video ended")
                 })
@@ -125,6 +123,13 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
             if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
 
             if(streamOpts.readAtNativeFps) command.inputOption('-re')
+
+            if(streamOpts.minimizeLatency) {
+                command.addOptions([
+                    '-fflags nobuffer',
+                    '-analyzeduration 0'
+                ])
+            }
 
             if (isHttpUrl) {
                 command.inputOption('-headers',
