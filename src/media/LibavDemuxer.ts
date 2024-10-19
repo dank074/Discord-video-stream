@@ -70,8 +70,7 @@ export async function demux(input: Readable) {
         aInfo = {
             index: aStream.index,
             codec: aStream.codec_id,
-            framerate_num: await libav.AVCodecParameters_framerate_num(aStream.codecpar),
-            framerate_den: await libav.AVCodecParameters_framerate_den(aStream.codecpar),
+            sample_rate: await libav.AVCodecParameters_sample_rate(aStream.codecpar),
             stream: new PassThrough({ objectMode: true })
         }
     }
