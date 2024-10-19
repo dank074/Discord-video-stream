@@ -17,7 +17,6 @@ const allowedVideoCodec = new Set([
 ]);
 
 const allowedAudioCodec = new Set([
-    AVCodecID.AV_CODEC_ID_PCM_S16LE,
     AVCodecID.AV_CODEC_ID_OPUS
 ]);
 
