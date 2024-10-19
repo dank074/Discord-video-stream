@@ -9,14 +9,14 @@ export class AudioPacketizer extends BaseMediaPacketizer {
         this.srInterval = 5 * 48000 / frame_size; // ~5 seconds
     }
 
-    public override sendFrame(frame:any): void {
+    public override sendFrame(frame: Buffer): void {
         super.sendFrame(frame);
         const packet = this.createPacket(frame);
         this.mediaUdp.sendPacket(packet);
         this.onFrameSent(packet.length);
     }
 
-    public createPacket(chunk: any): Buffer {
+    public createPacket(chunk: Buffer): Buffer {
         const header = this.makeRtpHeader();
 
         const nonceBuffer = this.mediaUdp.getNewNonceBuffer();

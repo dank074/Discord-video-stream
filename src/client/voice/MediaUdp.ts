@@ -85,14 +85,13 @@ export class MediaUdp {
         this._encryptionMode = mode;
     }
 
-    public sendAudioFrame(frame: any): void{
+    public sendAudioFrame(frame: Buffer): void{
         if(!this.ready) return;
         this.audioPacketizer.sendFrame(frame);
     }
 
-    public sendVideoFrame(frame: any): void {
+    public sendVideoFrame(frame: Buffer): void {
         if(!this.ready) return;
-
         this.videoPacketizer.sendFrame(frame);
     }
 
