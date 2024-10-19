@@ -1,5 +1,6 @@
 import { Writable } from "stream";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
+import type { Packet } from "@libav.js/variant-webcodecs";
 
 class AudioStream extends Writable {
     public udp: MediaUdp;
@@ -9,19 +10,19 @@ class AudioStream extends Writable {
     private noSleep: boolean;
 
     constructor(udp: MediaUdp, noSleep = false) {
-        super();
+        super({ objectMode: true });
         this.udp = udp;
         this.count = 0;
         this.sleepTime = 20;
         this.noSleep = noSleep;
     }
 
-    _write(chunk: any, _: BufferEncoding, callback: (error?: Error | null) => void) {
+    _write(chunk: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
         this.count++;
         if (!this.startTime)
             this.startTime = performance.now();
 
-        this.udp.sendAudioFrame(chunk);
+        this.udp.sendAudioFrame(Buffer.from(chunk.data));
         
         const next = ((this.count + 1) * this.sleepTime) - (performance.now() - this.startTime);
 
