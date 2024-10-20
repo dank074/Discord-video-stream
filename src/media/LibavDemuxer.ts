@@ -1,7 +1,6 @@
 import LibAV from "@libav.js/variant-webcodecs";
 import { uid } from "uid";
 import { AVCodecID } from "./LibavCodecId.js";
-import { setImmediate } from "node:timers";
 import { PassThrough } from "node:stream";
 import type { Readable } from "node:stream";
 
@@ -93,7 +92,7 @@ export async function demux(input: Readable) {
             cleanup();
             return;
         }
-        setImmediate(readLoop);
+        readLoop();
     }
     readLoop();
     return { video: vInfo, audio: aInfo }
