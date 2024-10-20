@@ -52,7 +52,7 @@ export function streamLivestreamVideo(
                 .size(`${streamOpts.width}x${streamOpts.height}`)
                 .fpsOutput(streamOpts.fps)
                 .videoBitrate(`${streamOpts.bitrateKbps}k`)
-                .outputFormat("mkv");
+                .outputFormat("matroska");
 
             // video setup
             command.outputOption('-bf', '0');
