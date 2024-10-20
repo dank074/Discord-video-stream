@@ -1,13 +1,17 @@
 import { Writable } from "stream";
+import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
 import { combineLoHi } from "./utils.js";
+import type { HasPTS } from "./HasPTS.js";
 import type { Packet } from "@libav.js/variant-webcodecs";
 
-export class VideoStream extends Writable {
+export class VideoStream extends Writable implements HasPTS {
     public udp: MediaUdp;
     public count: number;
     public sleepTime: number;
     public startTime?: number;
+    public syncStream: HasPTS | undefined;
+
     private noSleep: boolean;
     private _pts: number | undefined;
 
@@ -27,10 +31,18 @@ export class VideoStream extends Writable {
         return this._pts;
     }
 
-    _write(frame: Packet, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
+    async _write(frame: Packet, encoding: BufferEncoding, callback: (error?: Error | null) => void) {
         this.count++;
         if (!this.startTime)
             this.startTime = performance.now();
+
+        // We are ahead, wait for the other stream to catch up
+        while (
+            this.syncStream?.pts !== undefined &&
+            this._pts !== undefined &&
+            this.syncStream.pts < this._pts
+        )
+            await setTimeoutPromise();
 
         const { data, ptshi, pts, time_base_num, time_base_den } = frame;
         this.udp.sendVideoFrame(Buffer.from(data));
