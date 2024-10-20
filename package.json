@@ -14,7 +14,7 @@
   },
   "dependencies": {
     "@dank074/fluent-ffmpeg-multistream-ts": "^1.0.2",
-    "@libav.js/variant-webcodecs": "^6.2.7",
+    "@libav.js/variant-webcodecs": "^6.3.7",
     "fluent-ffmpeg": "^2.1.2",
     "libsodium-wrappers": "^0.7.13",
     "opusscript": "^0.1.1",
