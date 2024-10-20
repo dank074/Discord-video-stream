@@ -1,5 +1,6 @@
 import { Writable } from "stream";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
+import { combineLoHi } from "./utils.js";
 import type { Packet } from "@libav.js/variant-webcodecs";
 
 class AudioStream extends Writable {
@@ -8,6 +9,7 @@ class AudioStream extends Writable {
     public sleepTime: number;
     public startTime?: number;
     private noSleep: boolean;
+    private _pts: number | undefined;
 
     constructor(udp: MediaUdp, noSleep = false) {
         super({ objectMode: true });
@@ -17,12 +19,19 @@ class AudioStream extends Writable {
         this.noSleep = noSleep;
     }
 
-    _write(chunk: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
+    get pts() {
+        return this._pts;
+    }
+
+    _write(frame: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
         this.count++;
         if (!this.startTime)
             this.startTime = performance.now();
 
-        this.udp.sendAudioFrame(Buffer.from(chunk.data));
+        const { data, ptshi, pts, time_base_num, time_base_den } = frame;
+        this.udp.sendVideoFrame(Buffer.from(data));
+        if (ptshi !== undefined && pts !== undefined && time_base_num !== undefined && time_base_den !== undefined)
+            this._pts = combineLoHi(ptshi, pts) / time_base_den * time_base_num;
         
         const next = ((this.count + 1) * this.sleepTime) - (performance.now() - this.startTime);
 
