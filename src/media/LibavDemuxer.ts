@@ -73,27 +73,30 @@ export async function demux(input: Readable) {
         }
     }
 
-    const readLoop = async () => {
-        const [status, streams] = await libav.ff_read_frame_multi(fmt_ctx, pkt);
-        if (vInfo) {
-            for (const packet of streams[vInfo.index]) {
-                vInfo.stream.push(packet);
+    (async () => {
+        while (true)
+        {
+            const [status, streams] = await libav.ff_read_frame_multi(fmt_ctx, pkt, {
+                limit: 32 * 1024
+            });
+            if (vInfo) {
+                for (const packet of streams[vInfo.index] ?? []) {
+                    vInfo.stream.push(packet);
+                }
+            }
+            if (aInfo) {
+                for (const packet of streams[aInfo.index] ?? []) {
+                    aInfo.stream.push(packet);
+                }
+            }
+            if (status < 0 && status != -libav.EAGAIN) {
+                // End of file, or some error happened
+                vInfo?.stream.end();
+                aInfo?.stream.end();
+                cleanup();
+                return;
             }
         }
-        if (aInfo) {
-            for (const packet of streams[aInfo.index]) {
-                aInfo.stream.push(packet);
-            }
-        }
-        if (status < 0) {
-            // End of file, or some error happened
-            vInfo?.stream.end();
-            aInfo?.stream.end();
-            cleanup();
-            return;
-        }
-        readLoop();
-    }
-    readLoop();
+    })();
     return { video: vInfo, audio: aInfo }
 }
