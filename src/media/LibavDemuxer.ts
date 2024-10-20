@@ -28,7 +28,7 @@ export async function demux(input: Readable) {
     input.on("data", ondata);
     input.on("end", onend);
 
-    const [fmt_ctx, streams] = await libav.ff_init_demuxer_file(filename);
+    const [fmt_ctx, streams] = await libav.ff_init_demuxer_file(filename, "matroska");
     const pkt = await libav.av_packet_alloc();
 
     const cleanup = () => {
