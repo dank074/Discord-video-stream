@@ -1,19 +1,17 @@
-import { Writable } from "stream";
 import { setImmediate } from "timers/promises";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
 import { combineLoHi } from "./utils.js";
-import type { HasPTS } from "./HasPTS.js";
+import { BaseMediaStream } from "./BaseMediaStream.js";
 import type { Packet } from "@libav.js/variant-webcodecs";
 
-class AudioStream extends Writable implements HasPTS {
+class AudioStream extends BaseMediaStream {
     public udp: MediaUdp;
     public count: number;
     public sleepTime: number;
     public startTime?: number;
-    public syncStream?: HasPTS;
+    public syncStream?: BaseMediaStream;
 
     private noSleep: boolean;
-    private _pts?: number;
     private _syncTolerance: number = 0;
 
     constructor(udp: MediaUdp, noSleep = false) {
@@ -22,10 +20,6 @@ class AudioStream extends Writable implements HasPTS {
         this.count = 0;
         this.sleepTime = 20;
         this.noSleep = noSleep;
-    }
-
-    get pts() {
-        return this._pts;
     }
 
     get syncTolerance() {
@@ -45,7 +39,9 @@ class AudioStream extends Writable implements HasPTS {
 
         // We are ahead, wait for the other stream to catch up
         while (
-            this.syncStream?.pts !== undefined &&
+            this.syncStream &&
+            !this.syncStream.writableEnded &&
+            this.syncStream.pts !== undefined &&
             this._pts !== undefined &&
             this._pts - this.syncStream.pts > this._syncTolerance
         )
