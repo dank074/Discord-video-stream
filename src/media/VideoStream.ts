@@ -1,5 +1,5 @@
 import { Writable } from "stream";
-import { setTimeout as setTimeoutPromise } from "timers/promises";
+import { setImmediate } from "timers/promises";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
 import { combineLoHi } from "./utils.js";
 import type { HasPTS } from "./HasPTS.js";
@@ -42,7 +42,7 @@ export class VideoStream extends Writable implements HasPTS {
             this._pts !== undefined &&
             this.syncStream.pts < this._pts
         )
-            await setTimeoutPromise();
+            await setImmediate();
 
         const { data, ptshi, pts, time_base_num, time_base_den } = frame;
         this.udp.sendVideoFrame(Buffer.from(data));
