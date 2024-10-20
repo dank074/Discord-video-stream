@@ -10,10 +10,11 @@ class AudioStream extends Writable implements HasPTS {
     public count: number;
     public sleepTime: number;
     public startTime?: number;
-    public syncStream: HasPTS | undefined;
+    public syncStream?: HasPTS;
 
     private noSleep: boolean;
-    private _pts: number | undefined;
+    private _pts?: number;
+    private _syncTolerance: number = 0;
 
     constructor(udp: MediaUdp, noSleep = false) {
         super({ objectMode: true });
@@ -27,6 +28,16 @@ class AudioStream extends Writable implements HasPTS {
         return this._pts;
     }
 
+    get syncTolerance() {
+        return this._syncTolerance;
+    }
+
+    set syncTolerance(n: number) {
+        if (n < 0)
+            return;
+        this._syncTolerance = n;
+    }
+
     async _write(frame: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
         this.count++;
         if (!this.startTime)
@@ -36,7 +47,7 @@ class AudioStream extends Writable implements HasPTS {
         while (
             this.syncStream?.pts !== undefined &&
             this._pts !== undefined &&
-            this.syncStream.pts < this._pts
+            this._pts - this.syncStream.pts > this._syncTolerance
         )
             await setImmediate();
 
