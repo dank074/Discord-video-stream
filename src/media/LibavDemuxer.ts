@@ -4,8 +4,7 @@ import { AVCodecID } from "./LibavCodecId.js";
 import { PassThrough } from "node:stream";
 import type { Readable } from "node:stream";
 
-// @ts-expect-error
-const libav: LibAV.LibAV = await LibAV.LibAV();
+let libavPromise: Promise<LibAV.LibAV>;
 
 const allowedVideoCodec = new Set([
     AVCodecID.AV_CODEC_ID_H264,
@@ -20,6 +19,10 @@ const allowedAudioCodec = new Set([
 ]);
 
 export async function demux(input: Readable) {
+    if (!libavPromise)
+        // @ts-expect-error
+        libavPromise = LibAV.LibAV({ yesthreads: true });
+    const libav = await libavPromise;
     const filename = uid();
     await libav.mkreaderdev(filename);
 
