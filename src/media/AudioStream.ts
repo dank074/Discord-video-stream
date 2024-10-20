@@ -41,7 +41,7 @@ class AudioStream extends Writable implements HasPTS {
             await setImmediate();
 
         const { data, ptshi, pts, time_base_num, time_base_den } = frame;
-        this.udp.sendVideoFrame(Buffer.from(data));
+        this.udp.sendAudioFrame(Buffer.from(data));
         if (ptshi !== undefined && pts !== undefined && time_base_num !== undefined && time_base_den !== undefined)
             this._pts = combineLoHi(ptshi, pts) / time_base_den * time_base_num;
         
