@@ -56,6 +56,8 @@ export async function demux(input: Readable) {
         vInfo = {
             index: vStream.index,
             codec: vStream.codec_id,
+            width: await libav.AVCodecParameters_width(vStream.codecpar),
+            height: await libav.AVCodecParameters_height(vStream.codecpar),
             framerate_num: await libav.AVCodecParameters_framerate_num(vStream.codecpar),
             framerate_den: await libav.AVCodecParameters_framerate_den(vStream.codecpar),
             stream: new PassThrough({ objectMode: true })
