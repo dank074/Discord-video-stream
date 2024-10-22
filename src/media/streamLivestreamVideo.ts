@@ -1,7 +1,7 @@
 import ffmpeg from 'fluent-ffmpeg';
 import { AudioStream } from "./AudioStream.js";
 import { MediaUdp } from '../client/voice/MediaUdp.js';
-import { Readable, PassThrough, pipeline } from 'stream';
+import { Readable, PassThrough } from 'stream';
 import { VideoStream } from './VideoStream.js';
 import { normalizeVideoCodec } from '../utils.js';
 import PCancelable from 'p-cancelable';
@@ -136,10 +136,10 @@ export function streamLivestreamVideo(
             const videoStream = new VideoStream(
                 mediaUdp, video!.framerate_num / video!.framerate_den, streamOpts.readAtNativeFps
             );
-            pipeline(video!.stream, videoStream)
+            video!.stream.pipe(videoStream)
             if (audio && includeAudio) {
                 const audioStream = new AudioStream(mediaUdp, streamOpts.readAtNativeFps);
-                pipeline(audio.stream, audioStream);
+                audio.stream.pipe(audioStream);
             }
         } catch (e) {
             //audioStream.end();
