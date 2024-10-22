@@ -140,6 +140,8 @@ export function streamLivestreamVideo(
             if (audio && includeAudio) {
                 const audioStream = new AudioStream(mediaUdp, streamOpts.readAtNativeFps);
                 audio.stream.pipe(audioStream);
+                videoStream.syncStream = audioStream;
+                audioStream.syncStream = videoStream;
             }
         } catch (e) {
             //audioStream.end();
