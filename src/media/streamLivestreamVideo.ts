@@ -1,4 +1,5 @@
-import ffmpeg from 'fluent-ffmpeg';import { promisify } from 'util';
+import ffmpeg from 'fluent-ffmpeg';
+import { promisify } from 'util';
 import { IvfTransformer } from "../client/processing/IvfSplitter.js";
 import prism from "prism-media";
 import { AudioStream } from "./AudioStream.js";
