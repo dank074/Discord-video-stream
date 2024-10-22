@@ -60,10 +60,12 @@ export function streamLivestreamVideo(
                 case 'AV1':
                     command
                         .videoCodec("libsvtav1")
+                    break;
                 case 'VP8':
                     command
                         .videoCodec("libvpx-vp8")
                         .outputOption('-deadline', 'realtime');
+                    break;
                 case 'VP9':
                     command
                         .videoCodec("libvpx-vp9")
