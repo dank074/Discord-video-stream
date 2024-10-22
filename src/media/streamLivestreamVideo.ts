@@ -63,7 +63,7 @@ export function streamLivestreamVideo(
                     break;
                 case 'VP8':
                     command
-                        .videoCodec("libvpx-vp8")
+                        .videoCodec("libvpx")
                         .outputOption('-deadline', 'realtime');
                     break;
                 case 'VP9':
