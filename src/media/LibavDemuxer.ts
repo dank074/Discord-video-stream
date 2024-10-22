@@ -80,17 +80,15 @@ export async function demux(input: Readable) {
         while (true)
         {
             const [status, streams] = await libav.ff_read_frame_multi(fmt_ctx, pkt, {
-                limit: 16 * 1024
+                limit: 16 * 1024,
+                unify: true
             });
-            if (vInfo) {
-                for (const packet of streams[vInfo.index] ?? []) {
+            for (const packet of streams[0])
+            {
+                if (vInfo && vInfo.index === packet.stream_index)
                     vInfo.stream.push(packet);
-                }
-            }
-            if (aInfo) {
-                for (const packet of streams[aInfo.index] ?? []) {
+                else if (aInfo && aInfo.index === packet.stream_index)
                     aInfo.stream.push(packet);
-                }
             }
             if (status < 0 && status != -libav.EAGAIN) {
                 // End of file, or some error happened
