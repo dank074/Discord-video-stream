@@ -100,7 +100,7 @@ export function streamLivestreamVideo(
             command
                 .audioChannels(2)
                 .audioFrequency(48000)
-                .audioCodec("opus")
+                .audioCodec("libopus")
                 //.audioBitrate('128k')
 
             if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
