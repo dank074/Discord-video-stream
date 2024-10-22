@@ -1,4 +1,4 @@
-import ffmpeg from 'fluent-ffmpeg';
+import ffmpeg from 'fluent-ffmpeg';import { promisify } from 'util';
 import { IvfTransformer } from "../client/processing/IvfSplitter.js";
 import prism from "prism-media";
 import { AudioStream } from "./AudioStream.js";
@@ -10,11 +10,87 @@ import { VideoStream } from './VideoStream.js';
 import { normalizeVideoCodec } from '../utils.js';
 import PCancelable from 'p-cancelable';
 
+class MediaBuffer {
+    private audioBuffer: Array<{ data: Buffer, timestamp: number }> = [];
+    private videoBuffer: Array<{ data: Buffer, timestamp: number }> = [];
+    private readonly SYNC_THRESHOLD = 25;
+    private readonly AUDIO_DELAY = 500;
+    private syncInterval: NodeJS.Timeout;
+    private startTime: number;
+
+    constructor(private fps: number, private sampleRate: number, private mediaUdp: MediaUdp) {
+        this.startTime = Date.now();
+        this.syncInterval = setInterval(() => this.sync(), 1000 / fps);
+    }
+
+    public addAudioFrame(frame: Buffer) {
+        const timestamp = Date.now() - this.startTime;
+        this.audioBuffer.push({ data: frame, timestamp });
+    }
+
+    public addVideoFrame(frame: Buffer) {
+        const timestamp = Date.now() - this.startTime;
+        this.videoBuffer.push({ data: frame, timestamp });
+    }
+
+    private sync() {
+        const currentTime = Date.now() - this.startTime;
+
+        while (this.audioBuffer.length > 0 && this.videoBuffer.length > 0) {
+            const audioFrame = this.audioBuffer[0];
+            const videoFrame = this.videoBuffer[0];
+
+            const audioTimestamp = audioFrame.timestamp + this.AUDIO_DELAY;
+            const videoTimestamp = videoFrame.timestamp;
+
+            //console.log(`Audio TS: ${audioTimestamp}, Video TS: ${videoTimestamp}, Current: ${currentTime}`);
+
+            if (Math.abs(audioTimestamp - videoTimestamp) <= this.SYNC_THRESHOLD) {
+                this.sendSyncedFrames(audioFrame.data, videoFrame.data);
+                this.audioBuffer.shift();
+                this.videoBuffer.shift();
+            } else if (audioTimestamp < videoTimestamp) {
+                if (audioTimestamp <= currentTime) {
+                    this.mediaUdp.sendAudioFrame(audioFrame.data);
+                    this.audioBuffer.shift();
+                } else {
+                    break;
+                }
+            } else {
+                if (videoTimestamp <= currentTime) {
+                    this.mediaUdp.sendVideoFrame(videoFrame.data);
+                    this.videoBuffer.shift();
+                } else {
+                    break;
+                }
+            }
+        }
+
+        // Verwerfen Sie alte Frames
+        while (this.audioBuffer.length > 0 && this.audioBuffer[0].timestamp + this.AUDIO_DELAY < currentTime - 1000) {
+            this.audioBuffer.shift();
+        }
+        while (this.videoBuffer.length > 0 && this.videoBuffer[0].timestamp < currentTime - 1000) {
+            this.videoBuffer.shift();
+        }
+    }
+
+    private sendSyncedFrames(audioFrame: Buffer, videoFrame: Buffer) {
+        this.mediaUdp.sendAudioFrame(audioFrame);
+        this.mediaUdp.sendVideoFrame(videoFrame);
+    }
+
+    public stop() {
+        clearInterval(this.syncInterval);
+    }
+}
+
 export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaUdp, includeAudio = true, customHeaders?: map) {
-    return new PCancelable<string>((resolve, reject, onCancel) => {
+    return new PCancelable<string>(async (resolve, reject, onCancel) => {
         const streamOpts = mediaUdp.mediaConnection.streamOptions;
         const videoStream: VideoStream = new VideoStream(mediaUdp, streamOpts.fps, streamOpts.readAtNativeFps);
         const videoCodec = normalizeVideoCodec(streamOpts.videoCodec);
+        const mediaBuffer = new MediaBuffer(streamOpts.fps, 48000, mediaUdp);
         let videoOutput: Transform;
 
         switch(videoCodec) {
@@ -101,7 +177,10 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                     ]);
             }
 
-            videoOutput.pipe(videoStream, { end: false });
+            //videoOutput.pipe(videoStream, { end: false });
+            videoOutput.on('data', (chunk) => {
+                mediaBuffer.addVideoFrame(chunk);
+            });
 
             if (includeAudio) {
                 const audioStream: AudioStream = new AudioStream(mediaUdp, streamOpts.readAtNativeFps);
@@ -117,7 +196,10 @@ export function streamLivestreamVideo(input: string | Readable, mediaUdp: MediaU
                     //.audioBitrate('128k')
                     .format('s16le');
 
-                opus.pipe(audioStream, { end: false });
+                //opus.pipe(audioStream, { end: false });
+                opus.on('data', (chunk) => {
+                    mediaBuffer.addAudioFrame(chunk);
+                });
             }
 
             if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
