@@ -6,6 +6,7 @@ import {
     type AnnexBHelpers
 } from "../processing/AnnexBHelper.js";
 import { extensions } from "../../utils.js";
+import { splitNalu } from "../processing/AnnexBHelper.js";
 
 /**
  * Annex B format
@@ -72,18 +73,8 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
      */
     public override sendFrame(frame: Buffer): void {
         super.sendFrame(frame);
-        let accessUnit = frame;
 
-        const nalus: Buffer[] = [];
-
-        let offset = 0;
-        while (offset < accessUnit.length) {
-            const naluSize = accessUnit.readUInt32BE(offset);
-            offset += 4;
-            const nalu = accessUnit.subarray(offset, offset + naluSize);
-            nalus.push(nalu);
-            offset += nalu.length;
-        }
+        const nalus = splitNalu(frame);
 
         let packetsSent = 0;
         let bytesSent = 0;

@@ -113,3 +113,30 @@ export const H265Helpers: AnnexBHelpers = {
         return unitType === H265NalUnitTypes.AUD_NUT;
     }
 }
+
+// Get individual NAL units from an AVPacket frame
+export function splitNalu(frame: Buffer) {
+    const nalus = [];
+    let offset = 0;
+    while (offset < frame.length) {
+        const naluSize = frame.readUInt32BE(offset);
+        offset += 4;
+        const nalu = frame.subarray(offset, offset + naluSize);
+        nalus.push(nalu);
+        offset += nalu.length;
+    }
+    return nalus;
+}
+
+// Merge NAL units into an AVPacket frame
+export function mergeNalu(nalus: Buffer[])
+{
+    const chunks = [];
+    for (const nalu of nalus)
+    {
+        const size = Buffer.allocUnsafe(4);
+        size.writeUInt32BE(nalu.length);
+        chunks.push(size, nalu);
+    }
+    return Buffer.concat(chunks);
+}
