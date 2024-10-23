@@ -1,4 +1,4 @@
-import { setImmediate } from "timers/promises";
+import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
 import { combineLoHi } from "./utils.js";
 import { BaseMediaStream } from "./BaseMediaStream.js";
@@ -45,7 +45,7 @@ class AudioStream extends BaseMediaStream {
             this._pts !== undefined &&
             this._pts - this.syncStream.pts > this._syncTolerance
         )
-            await setImmediate();
+            await setTimeoutPromise(1);
 
         const { data, ptshi, pts, time_base_num, time_base_den } = frame;
         this.udp.sendAudioFrame(Buffer.from(data));
