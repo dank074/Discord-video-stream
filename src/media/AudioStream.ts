@@ -1,4 +1,3 @@
-import { setTimeout as setTimeoutPromise } from "timers/promises";
 import { MediaUdp } from "../client/voice/MediaUdp.js";
 import { combineLoHi } from "./utils.js";
 import { BaseMediaStream } from "./BaseMediaStream.js";
