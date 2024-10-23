@@ -92,7 +92,6 @@ export function streamLivestreamVideo(
                             `-preset ${streamOpts.h26xPreset}`,
                             '-profile:v main',
                             `-g ${streamOpts.fps}`,
-                            `-bf 0`,
                             `-x265-params keyint=${streamOpts.fps}:min-keyint=${streamOpts.fps}`,
                         ]);
                     break;
@@ -134,7 +133,10 @@ export function streamLivestreamVideo(
             onCancel(() => command.kill("SIGINT"));
 
             // demuxing
-            const { video, audio } = await demux(ffmpegOutput);
+            const { video, audio } = await demux(ffmpegOutput).catch((e) => {
+                command.kill("SIGINT");
+                throw e;
+            });
             const videoStream = new VideoStream(
                 mediaUdp, video!.framerate_num / video!.framerate_den, streamOpts.readAtNativeFps
             );
