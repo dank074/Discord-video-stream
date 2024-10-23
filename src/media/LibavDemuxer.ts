@@ -255,7 +255,7 @@ export async function demux(input: Readable) {
                 limit: 16 * 1024,
                 unify: true
             });
-            for (const packet of streams[0]) {
+            for (const packet of streams[0] ?? []) {
                 if (vInfo && vInfo.index === packet.stream_index) {
                     if (vInfo.codec === AVCodecID.AV_CODEC_ID_H264) {
                         packet.data = h264AddParamSets(
