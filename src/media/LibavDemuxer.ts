@@ -178,7 +178,6 @@ function h265AddParamSets(frame: Buffer, paramSets: H265ParamSets) {
 
 export async function demux(input: Readable) {
     if (!libavPromise)
-        // @ts-expect-error
         libavPromise = LibAV.LibAV({ yesthreads: true });
     const libav = await libavPromise;
     const filename = uid();
