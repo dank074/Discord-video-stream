@@ -17,9 +17,7 @@
     "@libav.js/variant-webcodecs": "^6.4.7",
     "fluent-ffmpeg": "^2.1.3",
     "libsodium-wrappers": "^0.7.15",
-    "opusscript": "^0.1.1",
     "p-cancelable": "^4.0.1",
-    "prism-media": "^1.3.5",
     "uid": "^2.0.2",
     "ws": "^8.18.0"
   },
@@ -32,14 +30,6 @@
   },
   "peerDependencies": {
     "discord.js-selfbot-v13": "3.x"
-  },
-  "optionalDependencies": {
-    "@discordjs/opus": "^0.9.0"
-  },
-  "overrides": {
-    "prism-media": {
-      "opusscript": "$opusscript"
-    }
   },
   "scripts": {
     "build": "tsc"
