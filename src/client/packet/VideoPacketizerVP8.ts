@@ -19,22 +19,22 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         this._pictureId = (this._pictureId + 1) % max_int16bit;
     }
 
-    public override sendFrame(frame: Buffer): void {
+    public override async sendFrame(frame: Buffer): Promise<void> {
         super.sendFrame(frame);
         const data = this.partitionDataMTUSizedChunks(frame);
 
         let bytesSent = 0;
         for (let i = 0; i < data.length; i++) {
-            const packet = this.createPacket(data[i], i === (data.length - 1), i === 0);
+            const packet = await this.createPacket(data[i], i === (data.length - 1), i === 0);
 
             this.mediaUdp.sendPacket(packet);
             bytesSent += packet.length;
         }
 
-        this.onFrameSent(data.length, bytesSent);
+        await this.onFrameSent(data.length, bytesSent);
     }
 
-    public createPacket(chunk: any, isLastPacket = true, isFirstPacket = true): Buffer {
+    public async createPacket(chunk: any, isLastPacket = true, isFirstPacket = true): Promise<Buffer> {
         if(chunk.length > this.mtu) throw Error('error packetizing video frame: frame is larger than mtu');
 
         const packetHeader = Buffer.concat([this.makeRtpHeader(isLastPacket), this.createExtensionHeader(extensions)]);
@@ -43,11 +43,11 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
     
         // nonce buffer used for encryption. 4 bytes are appended to end of packet
         const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
-        return Buffer.concat([packetHeader, this.encryptData(packetData, nonceBuffer, packetHeader), nonceBuffer.subarray(0, 4)]);
+        return Buffer.concat([packetHeader, await this.encryptData(packetData, nonceBuffer, packetHeader), nonceBuffer.subarray(0, 4)]);
     }
 
-    public override onFrameSent(packetsSent: number, bytesSent: number): void {
-        super.onFrameSent(packetsSent, bytesSent);
+    public override async onFrameSent(packetsSent: number, bytesSent: number): Promise<void> {
+        await super.onFrameSent(packetsSent, bytesSent);
         // video RTP packet timestamp incremental value = 90,000Hz / fps
         this.incrementTimestamp(90000 / this.mediaUdp.mediaConnection.streamOptions.fps);
         this.incrementPictureId();

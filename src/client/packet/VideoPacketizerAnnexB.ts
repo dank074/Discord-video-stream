@@ -71,7 +71,7 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
      * MTU-sized chunks
      * @param frame Annex B video frame
      */
-    public override sendFrame(frame: Buffer): void {
+    public override async sendFrame(frame: Buffer): Promise<void> {
         super.sendFrame(frame);
 
         const nalus = splitNalu(frame);
@@ -88,7 +88,10 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                 const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
                 const packet = Buffer.concat([
                     packetHeader,
-                    this.encryptData(Buffer.concat([this.createExtensionPayload(extensions), nalu]), nonceBuffer, packetHeader),
+                    await this.encryptData(
+                        Buffer.concat([this.createExtensionPayload(extensions), nalu]),
+                        nonceBuffer, packetHeader
+                    ),
                     nonceBuffer.subarray(0, 4),
                 ]);
                 this.mediaUdp.sendPacket(packet);
@@ -120,7 +123,7 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                     const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
                     const packet = Buffer.concat([
                         packetHeader,
-                        this.encryptData(packetData, nonceBuffer, packetHeader),
+                        await this.encryptData(packetData, nonceBuffer, packetHeader),
                         nonceBuffer.subarray(0, 4),
                     ]);
                     this.mediaUdp.sendPacket(packet);
@@ -131,15 +134,15 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
             index++;
         }
 
-        this.onFrameSent(packetsSent, bytesSent);
+        await this.onFrameSent(packetsSent, bytesSent);
     }
 
     protected makeFragmentationUnitHeader(isFirstPacket: boolean, isLastPacket: boolean, naluHeader: Buffer): Buffer {
         throw new Error("Not implemented");
     }
 
-    public override onFrameSent(packetsSent: number, bytesSent: number): void {
-        super.onFrameSent(packetsSent, bytesSent);
+    public override async onFrameSent(packetsSent: number, bytesSent: number): Promise<void> {
+        await super.onFrameSent(packetsSent, bytesSent);
         // video RTP packet timestamp incremental value = 90,000Hz / fps
         this.incrementTimestamp(90000 / this.mediaUdp.mediaConnection.streamOptions.fps);
     }

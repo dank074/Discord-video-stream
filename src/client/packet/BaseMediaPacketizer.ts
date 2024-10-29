@@ -1,11 +1,13 @@
-import _sodium from "libsodium-wrappers";
 import crypto from 'node:crypto';
+import sp from "sodium-plus";
 import { MediaUdp } from "../voice/MediaUdp.js";
 import { max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
 
+const { SodiumPlus, CryptographyKey } = sp;
+
 const ntpEpoch = new Date("Jan 01 1900 GMT").getTime();
 
-await _sodium.ready;
+let sodium: Promise<sp.SodiumPlus> | undefined;
 
 export class BaseMediaPacketizer {
     private _ssrc: number;
@@ -69,7 +71,7 @@ export class BaseMediaPacketizer {
         this._lastPacketTime = Date.now();
     }
 
-    public onFrameSent(packetsSent: number, bytesSent: number): void {
+    public async onFrameSent(packetsSent: number, bytesSent: number): Promise<void> {
         if(!this._mediaUdp.mediaConnection.streamOptions.rtcpSenderReportEnabled) return;
         
         this._totalPackets = this._totalPackets + packetsSent;
@@ -79,7 +81,7 @@ export class BaseMediaPacketizer {
         // exactly a multiple of the interval
         if (Math.floor(this._totalPackets / this._srInterval) - Math.floor(this._prevTotalPackets / this._srInterval) > 0)
         {
-            const senderReport = this.makeRtcpSenderReport();
+            const senderReport = await this.makeRtcpSenderReport();
             this._mediaUdp.sendPacket(senderReport);
             this._prevTotalPackets = this._totalPackets;
         }
@@ -129,7 +131,7 @@ export class BaseMediaPacketizer {
         return packetHeader;
     }
 
-    public makeRtcpSenderReport(): Buffer {
+    public async makeRtcpSenderReport(): Promise<Buffer> {
         const packetHeader = Buffer.allocUnsafe(8);
 
         packetHeader[0] = 0x80; // RFC1889 v2, no padding, no reception report count
@@ -157,7 +159,7 @@ export class BaseMediaPacketizer {
         const nonceBuffer = this._mediaUdp.getNewNonceBuffer();
         return Buffer.concat([
             packetHeader,
-            this.encryptData(senderReport, nonceBuffer, packetHeader),
+            await this.encryptData(senderReport, nonceBuffer, packetHeader),
             nonceBuffer.subarray(0, 4)
         ]);
     }
@@ -272,7 +274,7 @@ export class BaseMediaPacketizer {
      * @param additionalData 
      * @returns ciphertext
      */
-    public encryptData(plaintext: string | Uint8Array, nonceBuffer: Buffer, additionalData: Buffer) : Uint8Array {
+    public async encryptData(plaintext: Buffer, nonceBuffer: Buffer, additionalData: Buffer): Promise<Buffer> {
         switch (this._mediaUdp.encryptionMode) {
             case SupportedEncryptionModes.AES256:
                 const cipher = crypto.createCipheriv('aes-256-gcm', this._mediaUdp.mediaConnection.secretkey!, nonceBuffer);
@@ -280,7 +282,13 @@ export class BaseMediaPacketizer {
 
                 return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
             case SupportedEncryptionModes.XCHACHA20:
-                return _sodium.crypto_aead_xchacha20poly1305_ietf_encrypt(plaintext, additionalData, null, nonceBuffer, this._mediaUdp.mediaConnection.secretkey!)
+                if (!sodium)
+                    sodium = SodiumPlus.auto();
+                return await sodium.then(s => s.crypto_aead_xchacha20poly1305_ietf_encrypt(
+                    plaintext, nonceBuffer,
+                    new CryptographyKey(this._mediaUdp.mediaConnection.secretkey!),
+                    additionalData
+                ));
             default:
                 throw new Error("Unsupported encryption mode")
         }

@@ -99,7 +99,7 @@ export abstract class BaseMediaConnection {
     public ssrc: number | null = null;
     public videoSsrc: number | null = null;
     public rtxSsrc: number | null = null;
-    public secretkey: Uint8Array | null = null;
+    public secretkey: Buffer | null = null;
     private _streamOptions: StreamOptions;
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
@@ -218,7 +218,7 @@ export abstract class BaseMediaConnection {
     }
 
     handleProtocolAck(d: SelectProtocolAck): void {
-        this.secretkey = new Uint8Array(d.secret_key);
+        this.secretkey = Buffer.from(d.secret_key);
 
         this.ready(this.udp);
         this.udp.ready = true;
