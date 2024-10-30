@@ -31,6 +31,9 @@
   "peerDependencies": {
     "discord.js-selfbot-v13": "3.x"
   },
+  "engines": {
+    "node": ">=21.0.0"
+  },
   "scripts": {
     "build": "tsc"
   },
