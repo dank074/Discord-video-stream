@@ -85,14 +85,16 @@ export class MediaUdp {
         this._encryptionMode = mode;
     }
 
-    public sendAudioFrame(frame: Buffer): void{
+    public async sendAudioFrame(frame: Buffer): Promise<void> {
         if(!this.ready) return;
-        this.audioPacketizer.sendFrame(frame);
+        await this.audioPacketizer.sendFrame(frame);
     }
 
-    public sendVideoFrame(frame: Buffer): void {
+    public async sendVideoFrame(frame: Buffer): Promise<void> {
         if(!this.ready) return;
-        this.videoPacketizer.sendFrame(frame);
+        let start = performance.now()
+        await this.videoPacketizer.sendFrame(frame)
+        console.log(`Frame sent took ${performance.now() - start}ms`)
     }
 
     public sendPacket(packet: Buffer): Promise<void> {

@@ -66,7 +66,7 @@ export class BaseMediaPacketizer {
         this._srInterval = interval;
     }
 
-    public sendFrame(frame: Buffer): void {
+    public async sendFrame(frame: Buffer): Promise<void> {
         // override this
         this._lastPacketTime = Date.now();
     }

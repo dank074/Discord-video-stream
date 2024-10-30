@@ -27,7 +27,7 @@ class AudioStream extends BaseMediaStream {
         await this._waitForOtherStream();
 
         const { data, ptshi, pts, time_base_num, time_base_den } = frame;
-        this.udp.sendAudioFrame(Buffer.from(data));
+        await this.udp.sendAudioFrame(Buffer.from(data));
         if (ptshi !== undefined && pts !== undefined && time_base_num !== undefined && time_base_den !== undefined)
             this.pts = combineLoHi(ptshi, pts) / time_base_den * time_base_num;
         
