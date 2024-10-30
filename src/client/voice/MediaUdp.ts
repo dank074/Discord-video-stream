@@ -92,9 +92,7 @@ export class MediaUdp {
 
     public async sendVideoFrame(frame: Buffer): Promise<void> {
         if(!this.ready) return;
-        let start = performance.now()
         await this.videoPacketizer.sendFrame(frame)
-        console.log(`Frame sent took ${performance.now() - start}ms`)
     }
 
     public sendPacket(packet: Buffer): Promise<void> {
