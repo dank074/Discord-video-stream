@@ -106,7 +106,7 @@ export function streamLivestreamVideo(
 
             if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
 
-            if (streamOpts.readAtNativeFps) command.inputOption('-re')
+            command.inputOption('-re')
 
             if (streamOpts.minimizeLatency) {
                 command.addOptions([
@@ -137,12 +137,10 @@ export function streamLivestreamVideo(
                 command.kill("SIGINT");
                 throw e;
             });
-            const videoStream = new VideoStream(
-                mediaUdp, video!.framerate_num / video!.framerate_den, streamOpts.readAtNativeFps
-            );
+            const videoStream = new VideoStream(mediaUdp);
             video!.stream.pipe(videoStream)
             if (audio && includeAudio) {
-                const audioStream = new AudioStream(mediaUdp, streamOpts.readAtNativeFps);
+                const audioStream = new AudioStream(mediaUdp);
                 audio.stream.pipe(audioStream);
                 videoStream.syncStream = audioStream;
                 audioStream.syncStream = videoStream;
