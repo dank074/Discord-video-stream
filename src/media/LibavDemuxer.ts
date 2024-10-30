@@ -251,7 +251,7 @@ export async function demux(input: Readable) {
     (async () => {
         while (true) {
             const [status, streams] = await libav.ff_read_frame_multi(fmt_ctx, pkt, {
-                limit: 16 * 1024,
+                limit: 1,
                 unify: true
             });
             for (const packet of streams[0] ?? []) {
