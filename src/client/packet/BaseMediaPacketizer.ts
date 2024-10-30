@@ -277,25 +277,17 @@ export class BaseMediaPacketizer {
     public async encryptData(plaintext: Buffer, nonceBuffer: Buffer, additionalData: Buffer): Promise<Buffer> {
         switch (this._mediaUdp.encryptionMode) {
             case SupportedEncryptionModes.AES256:
-                const key = await webcrypto.subtle.importKey("raw", 
-                    this._mediaUdp.mediaConnection.secretkey!,
-                    {
-                        name: "AES-GCM",
-                        length: 32
-                    },
-                    false, ["encrypt"]
-                );
                 return Buffer.from(await webcrypto.subtle.encrypt({
                     name: "AES-GCM",
                     iv: nonceBuffer,
                     additionalData,
-                }, key, plaintext));
+                }, await this._mediaUdp.mediaConnection.secretkeyAes256!, plaintext));
             case SupportedEncryptionModes.XCHACHA20:
                 if (!sodium)
                     sodium = SodiumPlus.auto();
                 return await sodium.then(s => s.crypto_aead_xchacha20poly1305_ietf_encrypt(
                     plaintext, nonceBuffer,
-                    new CryptographyKey(this._mediaUdp.mediaConnection.secretkey!),
+                    this._mediaUdp.mediaConnection.secretkeyChacha20!,
                     additionalData
                 ));
             default:
