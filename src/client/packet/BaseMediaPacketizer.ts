@@ -1,5 +1,5 @@
-import crypto from 'node:crypto';
 import sp from "sodium-plus";
+import { webcrypto } from 'node:crypto';
 import { MediaUdp } from "../voice/MediaUdp.js";
 import { max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
 
@@ -277,10 +277,19 @@ export class BaseMediaPacketizer {
     public async encryptData(plaintext: Buffer, nonceBuffer: Buffer, additionalData: Buffer): Promise<Buffer> {
         switch (this._mediaUdp.encryptionMode) {
             case SupportedEncryptionModes.AES256:
-                const cipher = crypto.createCipheriv('aes-256-gcm', this._mediaUdp.mediaConnection.secretkey!, nonceBuffer);
-                cipher.setAAD(additionalData);
-
-                return Buffer.concat([cipher.update(plaintext), cipher.final(), cipher.getAuthTag()]);
+                const key = await webcrypto.subtle.importKey("raw", 
+                    this._mediaUdp.mediaConnection.secretkey!,
+                    {
+                        name: "AES-GCM",
+                        length: 32
+                    },
+                    false, ["encrypt"]
+                );
+                return Buffer.from(await webcrypto.subtle.encrypt({
+                    name: "AES-GCM",
+                    iv: nonceBuffer,
+                    additionalData,
+                }, key, plaintext));
             case SupportedEncryptionModes.XCHACHA20:
                 if (!sodium)
                     sodium = SodiumPlus.auto();
