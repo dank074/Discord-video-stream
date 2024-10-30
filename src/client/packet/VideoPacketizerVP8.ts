@@ -24,9 +24,8 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         const data = this.partitionDataMTUSizedChunks(frame);
 
         let bytesSent = 0;
-        for (let i = 0; i < data.length; i++) {
-            const packet = await this.createPacket(data[i], i === (data.length - 1), i === 0);
-
+        const encryptedPackets = data.map((chunk, i) => this.createPacket(chunk, i === (data.length - 1), i === 0))
+        for (const packet of await Promise.all(encryptedPackets)) {
             this.mediaUdp.sendPacket(packet);
             bytesSent += packet.length;
         }

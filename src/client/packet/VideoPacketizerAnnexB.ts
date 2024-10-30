@@ -100,6 +100,7 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
             } else {
                 const [naluHeader, naluData] = this._nalFunctions.splitHeader(nalu);
                 const data = this.partitionDataMTUSizedChunks(naluData);
+                const encryptedPackets: Promise<Buffer>[] = [];
 
                 // Send as Fragmentation Unit A (FU-A):
                 for (let i = 0; i < data.length; i++) {
@@ -121,11 +122,17 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                     ]);
                     // nonce buffer used for encryption. 4 bytes are appended to end of packet
                     const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
-                    const packet = Buffer.concat([
-                        packetHeader,
-                        await this.encryptData(packetData, nonceBuffer, packetHeader),
-                        nonceBuffer.subarray(0, 4),
-                    ]);
+                    encryptedPackets.push((async() => {
+                        return Buffer.concat([
+                            packetHeader,
+                            await this.encryptData(packetData, nonceBuffer, packetHeader),
+                            nonceBuffer.subarray(0, 4),
+                        ]);
+                    })());
+                }
+
+                for (const packet of await Promise.all(encryptedPackets))
+                {
                     this.mediaUdp.sendPacket(packet);
                     packetsSent++;
                     bytesSent += packet.length;
