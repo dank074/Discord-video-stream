@@ -1,5 +1,5 @@
+import sp from "sodium-plus";
 import { webcrypto } from "node:crypto";
-import { CryptographyKey } from "sodium-plus";
 import { VoiceOpCodes } from "./VoiceOpCodes.js";
 import { MediaUdp } from "./MediaUdp.js";
 import { normalizeVideoCodec, STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
@@ -102,7 +102,7 @@ export abstract class BaseMediaConnection {
     public rtxSsrc: number | null = null;
     public secretkey: Buffer | null = null;
     public secretkeyAes256: Promise<webcrypto.CryptoKey> | null = null;
-    public secretkeyChacha20: CryptographyKey | null = null;
+    public secretkeyChacha20: sp.CryptographyKey | null = null;
     private _streamOptions: StreamOptions;
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
@@ -230,7 +230,7 @@ export abstract class BaseMediaConnection {
             },
             false, ["encrypt"]
         );
-        this.secretkeyChacha20 = new CryptographyKey(this.secretkey);
+        this.secretkeyChacha20 = new sp.CryptographyKey(this.secretkey);
 
         this.ready(this.udp);
         this.udp.ready = true;
