@@ -70,13 +70,13 @@ export class BaseMediaStream extends Writable {
 
         const sendTime = end - start;
         const ratio = sendTime / (frametime * 1000);
-        loggerSend.debug(`Frame sent in ${sendTime}ms (${ratio * 100}% frametime)`, {
+        loggerSend.debug({
             stats: {
                 pts: this._pts,
                 duration: sendTime,
                 frametime: frametime * 1000
             }
-        })
+        }, `Frame sent in ${sendTime.toFixed(2)}ms (${(ratio * 100).toFixed(2)}% frametime)`)
         callback();
     }
     _destroy(error: Error | null, callback: (error?: Error | null) => void): void {

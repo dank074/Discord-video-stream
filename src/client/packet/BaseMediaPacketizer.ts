@@ -87,14 +87,14 @@ export class BaseMediaPacketizer {
             const senderReport = await this.makeRtcpSenderReport();
             this._mediaUdp.sendPacket(senderReport);
             this._prevTotalPackets = this._totalPackets;
-            loggerRtcpSr.debug(`Sent RTCP sender report for SSRC ${this._ssrc}`, {
+            loggerRtcpSr.debug({
                 stats: {
                     ssrc: this._ssrc,
                     timestamp: this._timestamp,
                     totalPackets: this._totalPackets,
                     totalBytes: this._totalBytes
                 }
-            });
+            }, `Sent RTCP sender report for SSRC ${this._ssrc}`);
         }
     }
 
