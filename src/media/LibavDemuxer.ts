@@ -1,4 +1,5 @@
 import LibAV from "@libav.js/variant-webcodecs";
+import { Log } from "debug-level";
 import { uid } from "uid";
 import { AVCodecID } from "./LibavCodecId.js";
 import {
@@ -7,12 +8,15 @@ import {
     splitNalu, mergeNalu
 } from "../client/processing/AnnexBHelper.js";
 import { PassThrough } from "node:stream";
-import type { Readable, Transform } from "node:stream";
+import type { Readable } from "node:stream";
+
+const loggerInput = new Log("demux:input");
+const loggerFormat = new Log("demux:format");
+const loggerFrame = new Log("demux:frame");
 
 type MediaStreamInfoCommon = {
     index: number,
     codec: AVCodecID,
-    stream: Transform
 }
 type VideoStreamInfo = MediaStreamInfoCommon & {
     width: number,
@@ -183,8 +187,14 @@ export async function demux(input: Readable) {
     const filename = uid();
     await libav.mkreaderdev(filename);
 
-    const ondata = (chunk: Buffer) => libav.ff_reader_dev_send(filename, chunk);
-    const onend = () => libav.ff_reader_dev_send(filename, null);
+    const ondata = (chunk: Buffer) => {
+        loggerInput.trace(`Received ${chunk.length} bytes of data for input ${filename}`);
+        libav.ff_reader_dev_send(filename, chunk)
+    };
+    const onend = () => {
+        loggerInput.trace(`Reached the end of input ${filename}`);
+        libav.ff_reader_dev_send(filename, null);
+    }
     input.on("data", ondata);
     input.on("end", onend);
 
@@ -203,6 +213,8 @@ export async function demux(input: Readable) {
     const aStream = streams.find((stream) => stream.codec_type == libav.AVMEDIA_TYPE_AUDIO)
     let vInfo: VideoStreamInfo | undefined
     let aInfo: AudioStreamInfo | undefined;
+    const vPipe = new PassThrough({ objectMode: true });
+    const aPipe = new PassThrough({ objectMode: true });
 
     if (vStream) {
         if (!allowedVideoCodec.has(vStream.codec_id)) {
@@ -217,7 +229,6 @@ export async function demux(input: Readable) {
             height: await libav.AVCodecParameters_height(vStream.codecpar),
             framerate_num: await libav.AVCodecParameters_framerate_num(vStream.codecpar),
             framerate_den: await libav.AVCodecParameters_framerate_den(vStream.codecpar),
-            stream: new PassThrough({ objectMode: true })
         }
         if (vStream.codec_id == AVCodecID.AV_CODEC_ID_H264) {
             const { extradata } = await libav.ff_copyout_codecpar(vStream.codecpar);
@@ -233,6 +244,9 @@ export async function demux(input: Readable) {
                 extradata: parsehvcC(Buffer.from(extradata!))
             }
         }
+        loggerFormat.info({
+            info: vInfo
+        }, `Found video stream in input ${filename}`)
     }
     if (aStream) {
         if (!allowedAudioCodec.has(aStream.codec_id)) {
@@ -244,8 +258,10 @@ export async function demux(input: Readable) {
             index: aStream.index,
             codec: aStream.codec_id,
             sample_rate: await libav.AVCodecParameters_sample_rate(aStream.codecpar),
-            stream: new PassThrough({ objectMode: true })
         }
+        loggerFormat.info({
+            info: aInfo
+        }, `Found audio stream in input ${filename}`)
     }
 
     (async () => {
@@ -268,19 +284,30 @@ export async function demux(input: Readable) {
                             vInfo.extradata! as H265ParamSets
                         );
                     }
-                    vInfo.stream.push(packet);
+                    vPipe.push(packet);
+                    loggerFrame.trace("Pushed a frame into the video pipe");
                 }
                 else if (aInfo && aInfo.index === packet.stream_index)
-                    aInfo.stream.push(packet);
+                {
+                    aPipe.push(packet);
+                    loggerFrame.trace("Pushed a frame into the audio pipe");
+                }
             }
             if (status < 0 && status != -libav.EAGAIN) {
                 // End of file, or some error happened
-                vInfo?.stream.end();
-                aInfo?.stream.end();
+                vPipe.end();
+                aPipe.end();
                 cleanup();
+                if (status == LibAV.AVERROR_EOF)
+                    loggerFrame.info("Reached end of stream. Stopping");
+                else
+                    loggerFrame.info({ status }, "Received an error during frame extraction. Stopping");
                 return;
             }
         }
     })();
-    return { video: vInfo, audio: aInfo }
+    return {
+        video: vInfo ? { ...vInfo, stream: vPipe as Readable } : undefined,
+        audio: aInfo ? { ...aInfo, stream: aPipe as Readable } : undefined
+    }
 }
