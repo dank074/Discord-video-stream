@@ -7,6 +7,7 @@ export class AudioStream extends BaseMediaStream {
     constructor(udp: MediaUdp) {
         super();
         this.udp = udp;
+        this._type = "audio";
     }
 
     protected override async _sendFrame(frame: Buffer): Promise<void> {
