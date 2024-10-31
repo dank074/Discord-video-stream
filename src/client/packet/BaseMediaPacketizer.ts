@@ -1,4 +1,5 @@
 import sp from "sodium-plus";
+import { Log } from "debug-level";
 import { webcrypto } from 'node:crypto';
 import { MediaUdp } from "../voice/MediaUdp.js";
 import { max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
@@ -8,6 +9,8 @@ const { SodiumPlus, CryptographyKey } = sp;
 const ntpEpoch = new Date("Jan 01 1900 GMT").getTime();
 
 let sodium: Promise<sp.SodiumPlus> | undefined;
+
+const loggerRtcpSr = new Log("packetizer:rtcp-sr")
 
 export class BaseMediaPacketizer {
     private _ssrc: number;
@@ -84,6 +87,14 @@ export class BaseMediaPacketizer {
             const senderReport = await this.makeRtcpSenderReport();
             this._mediaUdp.sendPacket(senderReport);
             this._prevTotalPackets = this._totalPackets;
+            loggerRtcpSr.debug(`Sent RTCP sender report for SSRC ${this._ssrc}`, {
+                stats: {
+                    ssrc: this._ssrc,
+                    timestamp: this._timestamp,
+                    totalPackets: this._totalPackets,
+                    totalBytes: this._totalBytes
+                }
+            });
         }
     }
 
