@@ -73,6 +73,7 @@ export class BaseMediaStream extends Writable {
         loggerSend.debug({
             stats: {
                 pts: this._pts,
+                frame_size: data.length,
                 duration: sendTime,
                 frametime: frametime * 1000
             }
