@@ -76,7 +76,15 @@ export class BaseMediaStream extends Writable {
                 duration: sendTime,
                 frametime: frametime * 1000
             }
-        }, `Frame sent in ${sendTime.toFixed(2)}ms (${(ratio * 100).toFixed(2)}% frametime)`)
+        }, `Frame sent in ${sendTime.toFixed(2)}ms (${(ratio * 100).toFixed(2)}% frametime)`);
+        if (ratio > 1)
+        {
+            loggerSend.warn({
+                frame_size: data.length,
+                duration: sendTime,
+                frametime: frametime * 1000
+            }, `Frame takes too long to send (${(ratio * 100).toFixed(2)}% frametime)`)
+        }
         callback();
     }
     _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
