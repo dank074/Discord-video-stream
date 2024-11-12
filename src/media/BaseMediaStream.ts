@@ -7,10 +7,14 @@ import type { Packet } from "@libav.js/variant-webcodecs";
 export class BaseMediaStream extends Writable {
     private _pts?: number;
     private _syncTolerance: number = 0;
-    protected _type = "base";
+    private _loggerSend: Log;
+    private _loggerSync: Log;
+
     public syncStream?: BaseMediaStream;
-    constructor() {
+    constructor(type: string) {
         super({ objectMode: true })
+        this._loggerSend = new Log(`stream:${type}:send`);
+        this._loggerSync = new Log(`stream:${type}:sync`);
     }
     get pts(): number | undefined {
         return this._pts;
@@ -25,7 +29,6 @@ export class BaseMediaStream extends Writable {
     }
     protected async _waitForOtherStream()
     {
-        const loggerSync = new Log(`stream:${this._type}:sync`);
         let i = 0;
         while (
             this.syncStream &&
@@ -37,7 +40,7 @@ export class BaseMediaStream extends Writable {
         {
             if (i == 0)
             {
-                loggerSync.debug(`Waiting for other stream (%f - %f > %f)`,
+                this._loggerSync.debug(`Waiting for other stream (%f - %f > %f)`,
                     this._pts, this.syncStream._pts, this._syncTolerance
                 );
             }
@@ -50,8 +53,6 @@ export class BaseMediaStream extends Writable {
         throw new Error("Not implemented");
     }
     async _write(frame: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
-        const loggerSend = new Log(`stream:${this._type}:send`);
-
         await this._waitForOtherStream();
 
         const { data, ptshi, pts, durationhi, duration, time_base_num, time_base_den } = frame;
@@ -70,7 +71,7 @@ export class BaseMediaStream extends Writable {
 
         const sendTime = end - start;
         const ratio = sendTime / (frametime * 1000);
-        loggerSend.debug({
+        this._loggerSend.debug({
             stats: {
                 pts: this._pts,
                 frame_size: data.length,
@@ -80,7 +81,7 @@ export class BaseMediaStream extends Writable {
         }, `Frame sent in ${sendTime.toFixed(2)}ms (${(ratio * 100).toFixed(2)}% frametime)`);
         if (ratio > 1)
         {
-            loggerSend.warn({
+            this._loggerSend.warn({
                 frame_size: data.length,
                 duration: sendTime,
                 frametime: frametime * 1000

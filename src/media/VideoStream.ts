@@ -5,9 +5,8 @@ export class VideoStream extends BaseMediaStream {
     public udp: MediaUdp;
 
     constructor(udp: MediaUdp) {
-        super();
+        super("video");
         this.udp = udp;
-        this._type = "video";
     }
 
     protected override async _sendFrame(frame: Buffer): Promise<void> {
