@@ -5,6 +5,8 @@ export class BaseMediaStream extends Writable {
     private _pts?: number;
     private _syncTolerance: number = 0;
     public syncStream?: BaseMediaStream;
+    public timeout: NodeJS.Timeout | undefined;
+
     get pts(): number | undefined {
         return this._pts;
     }
@@ -33,5 +35,10 @@ export class BaseMediaStream extends Writable {
     _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
         super._destroy(error, callback);
         this.syncStream = undefined;
+    }
+
+    public cancel(): void {
+        clearTimeout(this.timeout);
+        this.end();
     }
 }

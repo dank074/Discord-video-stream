@@ -60,6 +60,10 @@ export interface StreamOptions {
      * ChaCha20-Poly1305 Encryption is faster than AES-256-GCM, except when using AES-NI
      */
     forceChacha20Encryption: boolean;
+    /**
+     * Force ffmpeg to process the media at its native framerate
+     */
+    readAtNativeFps: boolean;
 }
 
 const defaultStreamOptions: StreamOptions = {
@@ -74,6 +78,7 @@ const defaultStreamOptions: StreamOptions = {
     h26xPreset: 'ultrafast',
     minimizeLatency: true,
     forceChacha20Encryption: false,
+    readAtNativeFps: true,
 }
 
 export abstract class BaseMediaConnection {

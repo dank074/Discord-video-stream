@@ -17,6 +17,8 @@ export function streamLivestreamVideo(
         const streamOpts = mediaUdp.mediaConnection.streamOptions;
         const videoCodec = normalizeVideoCodec(streamOpts.videoCodec);
 
+        let isFfmpegProcessRunning = true
+
         // ffmpeg setup
         let headers: Record<string, string> = {
             "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/107.0.0.0 Safari/537.3",
@@ -37,10 +39,11 @@ export function streamLivestreamVideo(
         try {
             // command creation
             const command = ffmpeg(input)
-                .output(ffmpegOutput)
                 .addOption('-loglevel', '0')
                 .on('end', () => {
-                    resolve("video ended")
+                    //resolve("video ended")
+                    isFfmpegProcessRunning = false
+                    console.log("FFmpeg process has finished transcoding")
                 })
                 .on("error", (err, stdout, stderr) => {
                     reject('cannot play video ' + err.message)
@@ -49,6 +52,7 @@ export function streamLivestreamVideo(
 
             // general output options
             command
+                .output(ffmpegOutput)
                 .size(`${streamOpts.width}x${streamOpts.height}`)
                 .fpsOutput(streamOpts.fps)
                 .videoBitrate(`${streamOpts.bitrateKbps}k`)
@@ -106,7 +110,7 @@ export function streamLivestreamVideo(
 
             if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
 
-            command.inputOption('-re')
+            if(streamOpts.readAtNativeFps) command.inputOption('-re')
 
             if (streamOpts.minimizeLatency) {
                 command.addOptions([
@@ -130,20 +134,42 @@ export function streamLivestreamVideo(
             }
 
             command.run();
-            onCancel(() => command.kill("SIGINT"));
 
             // demuxing
             const { video, audio } = await demux(ffmpegOutput).catch((e) => {
-                command.kill("SIGINT");
+                if(isFfmpegProcessRunning) {
+                    isFfmpegProcessRunning = false;
+                    command.kill("SIGINT");
+                }
                 throw e;
             });
-            const videoStream = new VideoStream(mediaUdp);
+
+            let videoStream: VideoStream;
+            let audioStream: AudioStream;
+
+            onCancel(async () => {
+                try {
+                    if(isFfmpegProcessRunning) {
+                        isFfmpegProcessRunning = false;
+                        command.kill("SIGINT");
+                    }
+                    videoStream.cancel();
+                    audioStream.cancel();
+                    
+                } catch(e) {
+                    console.log(e)
+                }   
+            })
+
+            videoStream = new VideoStream(mediaUdp, video!.framerate_num / video!.framerate_den, streamOpts.readAtNativeFps);
             video!.stream.pipe(videoStream)
             if (audio && includeAudio) {
-                const audioStream = new AudioStream(mediaUdp);
+                audioStream = new AudioStream(mediaUdp, streamOpts.readAtNativeFps);
                 audio.stream.pipe(audioStream);
                 videoStream.syncStream = audioStream;
                 audioStream.syncStream = videoStream;
+
+                video!.stream.on("end", () => resolve("video ended"))
             }
         } catch (e) {
             //audioStream.end();
