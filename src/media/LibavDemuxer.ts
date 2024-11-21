@@ -10,10 +10,6 @@ import {
 import { PassThrough } from "node:stream";
 import type { Readable } from "node:stream";
 
-const loggerInput = new Log("demux:input");
-const loggerFormat = new Log("demux:format");
-const loggerFrame = new Log("demux:frame");
-
 type MediaStreamInfoCommon = {
     index: number,
     codec: AVCodecID,
@@ -181,6 +177,10 @@ function h265AddParamSets(frame: Buffer, paramSets: H265ParamSets) {
 }
 
 export async function demux(input: Readable) {
+    const loggerInput = new Log("demux:input");
+    const loggerFormat = new Log("demux:format");
+    const loggerFrame = new Log("demux:frame");
+
     if (!libavPromise)
         libavPromise = LibAV.LibAV({ yesthreads: true });
     const libav = await libavPromise;

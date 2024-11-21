@@ -10,9 +10,9 @@ const ntpEpoch = new Date("Jan 01 1900 GMT").getTime();
 
 let sodium: Promise<sp.SodiumPlus> | undefined;
 
-const loggerRtcpSr = new Log("packetizer:rtcp-sr")
-
 export class BaseMediaPacketizer {
+    private _loggerRtcpSr = new Log("packetizer:rtcp-sr");
+
     private _ssrc: number;
     private _payloadType: number;
     private _mtu: number;
@@ -87,7 +87,7 @@ export class BaseMediaPacketizer {
             const senderReport = await this.makeRtcpSenderReport();
             this._mediaUdp.sendPacket(senderReport);
             this._prevTotalPackets = this._totalPackets;
-            loggerRtcpSr.debug({
+            this._loggerRtcpSr.debug({
                 stats: {
                     ssrc: this._ssrc,
                     timestamp: this._timestamp,
