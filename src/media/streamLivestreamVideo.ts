@@ -106,8 +106,6 @@ export function streamLivestreamVideo(
 
             if (streamOpts.hardwareAcceleratedDecoding) command.inputOption('-hwaccel', 'auto');
 
-            command.inputOption('-re')
-
             if (streamOpts.minimizeLatency) {
                 command.addOptions([
                     '-fflags nobuffer',
