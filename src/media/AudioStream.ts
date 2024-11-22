@@ -4,8 +4,8 @@ import { BaseMediaStream } from "./BaseMediaStream.js";
 export class AudioStream extends BaseMediaStream {
     public udp: MediaUdp;
 
-    constructor(udp: MediaUdp) {
-        super("audio");
+    constructor(udp: MediaUdp, noSleep: boolean = false) {
+        super("audio", noSleep);
         this.udp = udp;
     }
 
