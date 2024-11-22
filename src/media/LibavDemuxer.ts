@@ -1,4 +1,5 @@
 import LibAV from "@libav.js/variant-webcodecs";
+import pDebounce from "p-debounce";
 import { Log } from "debug-level";
 import { uid } from "uid";
 import { AVCodecID } from "./LibavCodecId.js";
@@ -27,8 +28,6 @@ type AudioStreamInfo = MediaStreamInfoCommon & {
 
 type H264ParamSets = Record<"sps" | "pps", Buffer[]>
 type H265ParamSets = Record<"vps" | "sps" | "pps", Buffer[]>
-
-let libavPromise: Promise<LibAV.LibAV>;
 
 const allowedVideoCodec = new Set([
     AVCodecID.AV_CODEC_ID_H264,
@@ -176,13 +175,15 @@ function h265AddParamSets(frame: Buffer, paramSets: H265ParamSets) {
     return mergeNalu([...chunks, ...nalus]);
 }
 
+const libavPromise = LibAV.LibAV();
+
 export async function demux(input: Readable) {
     const loggerInput = new Log("demux:input");
     const loggerFormat = new Log("demux:format");
-    const loggerFrame = new Log("demux:frame");
+    const loggerFrameCommon = new Log("demux:frame:common");
+    const loggerFrameVideo = new Log("demux:frame:video");
+    const loggerFrameAudio = new Log("demux:frame:audio");
 
-    if (!libavPromise)
-        libavPromise = LibAV.LibAV({ yesthreads: true });
     const libav = await libavPromise;
     const filename = uid();
     await libav.mkreaderdev(filename);
@@ -202,6 +203,8 @@ export async function demux(input: Readable) {
     const pkt = await libav.av_packet_alloc();
 
     const cleanup = () => {
+        vPipe.off("drain", readFrame);
+        aPipe.off("drain", readFrame);
         input.off("data", ondata);
         input.off("end", onend);
         libav.avformat_close_input_js(fmt_ctx);
@@ -264,8 +267,12 @@ export async function demux(input: Readable) {
         }, `Found audio stream in input ${filename}`)
     }
 
-    (async () => {
-        while (true) {
+    const readFrame = pDebounce.promise(async () => {
+        input.resume();
+        loggerInput.trace("Input stream resumed");
+        let resume = true;
+        while (resume)
+        {
             const [status, streams] = await libav.ff_read_frame_multi(fmt_ctx, pkt, {
                 limit: 1,
                 unify: true
@@ -284,28 +291,41 @@ export async function demux(input: Readable) {
                             vInfo.extradata! as H265ParamSets
                         );
                     }
-                    vPipe.push(packet);
-                    loggerFrame.trace("Pushed a frame into the video pipe");
+                    resume &&= vPipe.write(packet);
+                    loggerFrameVideo.trace("Pushed a frame into the video pipe");
                 }
-                else if (aInfo && aInfo.index === packet.stream_index)
-                {
-                    aPipe.push(packet);
-                    loggerFrame.trace("Pushed a frame into the audio pipe");
+                else if (aInfo && aInfo.index === packet.stream_index) {
+                    resume &&= aPipe.write(packet);
+                    loggerFrameAudio.trace("Pushed a frame into the audio pipe");
                 }
             }
             if (status < 0 && status != -libav.EAGAIN) {
                 // End of file, or some error happened
+                cleanup();
                 vPipe.end();
                 aPipe.end();
-                cleanup();
                 if (status == LibAV.AVERROR_EOF)
-                    loggerFrame.info("Reached end of stream. Stopping");
+                    loggerFrameCommon.info("Reached end of stream. Stopping");
                 else
-                    loggerFrame.info({ status }, "Received an error during frame extraction. Stopping");
+                    loggerFrameCommon.info({ status }, "Received an error during frame extraction. Stopping");
                 return;
             }
+            if (!resume)
+            {
+                input.pause();
+                loggerInput.trace("Input stream paused");
+            }
         }
-    })();
+    });
+    vPipe.on("drain", () => {
+        loggerFrameVideo.trace("Video pipe drained");
+        readFrame();
+    });
+    aPipe.on("drain", () => {
+        loggerFrameAudio.trace("Audio pipe drained");
+        readFrame();
+    });
+    readFrame();
     return {
         video: vInfo ? { ...vInfo, stream: vPipe as Readable } : undefined,
         audio: aInfo ? { ...aInfo, stream: aPipe as Readable } : undefined
