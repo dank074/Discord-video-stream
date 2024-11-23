@@ -69,12 +69,12 @@ export class BaseMediaPacketizer {
         this._srInterval = interval;
     }
 
-    public async sendFrame(frame: Buffer): Promise<void> {
+    public async sendFrame(frame: Buffer, frametime: number): Promise<void> {
         // override this
         this._lastPacketTime = Date.now();
     }
 
-    public async onFrameSent(packetsSent: number, bytesSent: number): Promise<void> {
+    public async onFrameSent(packetsSent: number, bytesSent: number, frametime: number): Promise<void> {
         if(!this._mediaUdp.mediaConnection.streamOptions.rtcpSenderReportEnabled) return;
         
         this._totalPackets = this._totalPackets + packetsSent;

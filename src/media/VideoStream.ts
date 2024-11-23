@@ -9,7 +9,7 @@ export class VideoStream extends BaseMediaStream {
         this.udp = udp;
     }
 
-    protected override async _sendFrame(frame: Buffer): Promise<void> {
-        await this.udp.sendVideoFrame(frame);
+    protected override async _sendFrame(frame: Buffer, frametime: number): Promise<void> {
+        await this.udp.sendVideoFrame(frame, frametime);
     }
 }

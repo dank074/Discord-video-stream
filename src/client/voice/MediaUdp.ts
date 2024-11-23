@@ -85,14 +85,14 @@ export class MediaUdp {
         this._encryptionMode = mode;
     }
 
-    public async sendAudioFrame(frame: Buffer): Promise<void> {
+    public async sendAudioFrame(frame: Buffer, frametime: number): Promise<void> {
         if(!this.ready) return;
-        await this.audioPacketizer.sendFrame(frame);
+        await this.audioPacketizer.sendFrame(frame, frametime);
     }
 
-    public async sendVideoFrame(frame: Buffer): Promise<void> {
+    public async sendVideoFrame(frame: Buffer, frametime: number): Promise<void> {
         if(!this.ready) return;
-        await this.videoPacketizer.sendFrame(frame)
+        await this.videoPacketizer.sendFrame(frame, frametime);
     }
 
     public sendPacket(packet: Buffer): Promise<void> {

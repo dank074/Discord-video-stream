@@ -55,7 +55,7 @@ export class BaseMediaStream extends Writable {
             i = (i + 1) % 10;
         }
     }
-    protected async _sendFrame(_: Buffer): Promise<void>
+    protected async _sendFrame(frame: Buffer, frametime: number): Promise<void>
     {
         throw new Error("Not implemented");
     }
@@ -68,7 +68,7 @@ export class BaseMediaStream extends Writable {
         const frametime = combineLoHi(durationhi!, duration!) / time_base_den! * time_base_num! * 1000;
 
         const start = performance.now();
-        await this._sendFrame(Buffer.from(data));
+        await this._sendFrame(Buffer.from(data), frametime);
         const end = performance.now();
         this._pts = combineLoHi(ptshi!, pts!) / time_base_den! * time_base_num! * 1000;
         if (this._startPts === undefined)

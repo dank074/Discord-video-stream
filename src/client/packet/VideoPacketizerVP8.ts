@@ -19,8 +19,8 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         this._pictureId = (this._pictureId + 1) % max_int16bit;
     }
 
-    public override async sendFrame(frame: Buffer): Promise<void> {
-        super.sendFrame(frame);
+    public override async sendFrame(frame: Buffer, frametime: number): Promise<void> {
+        super.sendFrame(frame, frametime);
         const data = this.partitionDataMTUSizedChunks(frame);
 
         let bytesSent = 0;
@@ -30,7 +30,7 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
             bytesSent += packet.length;
         }
 
-        await this.onFrameSent(data.length, bytesSent);
+        await this.onFrameSent(data.length, bytesSent, frametime);
     }
 
     public async createPacket(chunk: any, isLastPacket = true, isFirstPacket = true): Promise<Buffer> {
@@ -45,10 +45,10 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         return Buffer.concat([packetHeader, await this.encryptData(packetData, nonceBuffer, packetHeader), nonceBuffer.subarray(0, 4)]);
     }
 
-    public override async onFrameSent(packetsSent: number, bytesSent: number): Promise<void> {
-        await super.onFrameSent(packetsSent, bytesSent);
+    public override async onFrameSent(packetsSent: number, bytesSent: number, frametime: number): Promise<void> {
+        await super.onFrameSent(packetsSent, bytesSent, frametime);
         // video RTP packet timestamp incremental value = 90,000Hz / fps
-        this.incrementTimestamp(90000 / this.mediaUdp.mediaConnection.streamOptions.fps);
+        this.incrementTimestamp(90000 / 1000 * frametime);
         this.incrementPictureId();
     }
 

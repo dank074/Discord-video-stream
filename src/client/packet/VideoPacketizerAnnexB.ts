@@ -71,8 +71,8 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
      * MTU-sized chunks
      * @param frame Annex B video frame
      */
-    public override async sendFrame(frame: Buffer): Promise<void> {
-        super.sendFrame(frame);
+    public override async sendFrame(frame: Buffer, frametime: number): Promise<void> {
+        super.sendFrame(frame, frametime);
 
         const nalus = splitNalu(frame);
 
@@ -141,17 +141,17 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
             index++;
         }
 
-        await this.onFrameSent(packetsSent, bytesSent);
+        await this.onFrameSent(packetsSent, bytesSent, frametime);
     }
 
     protected makeFragmentationUnitHeader(isFirstPacket: boolean, isLastPacket: boolean, naluHeader: Buffer): Buffer {
         throw new Error("Not implemented");
     }
 
-    public override async onFrameSent(packetsSent: number, bytesSent: number): Promise<void> {
-        await super.onFrameSent(packetsSent, bytesSent);
+    public override async onFrameSent(packetsSent: number, bytesSent: number, frametime: number): Promise<void> {
+        await super.onFrameSent(packetsSent, bytesSent, frametime);
         // video RTP packet timestamp incremental value = 90,000Hz / fps
-        this.incrementTimestamp(90000 / this.mediaUdp.mediaConnection.streamOptions.fps);
+        this.incrementTimestamp(90000 / 1000 * frametime);
     }
 }
 
