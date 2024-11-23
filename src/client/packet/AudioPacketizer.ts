@@ -1,12 +1,10 @@
 import { MediaUdp } from "../voice/MediaUdp.js";
 import { BaseMediaPacketizer } from "./BaseMediaPacketizer.js";
 
-const frame_size = (48000 / 100) * 2;
-
 export class AudioPacketizer extends BaseMediaPacketizer {
     constructor(connection: MediaUdp) {
         super(connection, 0x78);
-        this.srInterval = 5 * 48000 / frame_size; // ~5 seconds
+        this.srInterval = 5 * 1000 / 20; // ~5 seconds for 20ms frame time
     }
 
     public override async sendFrame(frame: Buffer, frametime: number): Promise<void> {
