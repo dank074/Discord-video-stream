@@ -17,7 +17,7 @@ export class BaseMediaStream extends Writable {
 
     public syncStream?: BaseMediaStream;
     constructor(type: string, noSleep: boolean = false) {
-        super({ objectMode: true })
+        super({ objectMode: true, highWaterMark: 0 });
         this._loggerSend = new Log(`stream:${type}:send`);
         this._loggerSync = new Log(`stream:${type}:sync`);
         this._loggerSleep = new Log(`stream:${type}:sleep`);

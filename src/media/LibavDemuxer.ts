@@ -175,7 +175,13 @@ function h265AddParamSets(frame: Buffer, paramSets: H265ParamSets) {
     return mergeNalu([...chunks, ...nalus]);
 }
 
-const libavPromise = LibAV.LibAV();
+const idToStream = new Map<string, Readable>();
+const libavPromise = LibAV.LibAV({ yesthreads: true });
+libavPromise.then((libav) => {
+    libav.onread = (id) => {
+        idToStream.get(id)?.resume();
+    }
+})
 
 export async function demux(input: Readable) {
     const loggerInput = new Log("demux:input");
@@ -187,6 +193,7 @@ export async function demux(input: Readable) {
     const libav = await libavPromise;
     const filename = uid();
     await libav.mkreaderdev(filename);
+    idToStream.set(filename, input);
 
     const ondata = (chunk: Buffer) => {
         loggerInput.trace(`Received ${chunk.length} bytes of data for input ${filename}`);
@@ -207,6 +214,7 @@ export async function demux(input: Readable) {
         aPipe.off("drain", readFrame);
         input.off("data", ondata);
         input.off("end", onend);
+        idToStream.delete(filename);
         libav.avformat_close_input_js(fmt_ctx);
         libav.av_packet_free(pkt);
         libav.unlink(filename);
@@ -268,8 +276,6 @@ export async function demux(input: Readable) {
     }
 
     const readFrame = pDebounce.promise(async () => {
-        input.resume();
-        loggerInput.trace("Input stream resumed");
         let resume = true;
         while (resume)
         {
