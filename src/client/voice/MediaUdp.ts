@@ -164,7 +164,6 @@ export class MediaUdp {
                     this._ip = packet.ip;
                     this._port = packet.port;
                     this._ready = true;
-                    this._mediaConnection.ready(this);
                 } catch(e) { reject(e) }
                 
                 resolve();

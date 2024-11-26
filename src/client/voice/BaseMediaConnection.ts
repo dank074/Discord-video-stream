@@ -246,7 +246,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
 
             if (op == VoiceOpCodes.READY) { // ready
                 this.handleReady(d);
-                this.sendVoice();
+                this.sendVoice().then(() => this.ready(this.udp));
                 this.setVideoStatus(false);
             }
             else if (op >= 4000) {
