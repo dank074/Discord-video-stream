@@ -6,6 +6,7 @@ import type { MediaUdp, Streamer } from '../client/index.js';
 import { VideoStream } from './VideoStream.js';
 import { AudioStream } from './AudioStream.js';
 import { isFiniteNonZero } from '../utils.js';
+import { AVCodecID } from './LibavCodecId.js';
 
 export type EncoderOptions = {
     /**
@@ -305,6 +306,13 @@ export async function playStream(
     if (!video)
         throw new Error("No video stream in media");
 
+    const videoCodecMap: Record<number, SupportedVideoCodec> = {
+        [AVCodecID.AV_CODEC_ID_H264]: "H264",
+        [AVCodecID.AV_CODEC_ID_H265]: "H265",
+        [AVCodecID.AV_CODEC_ID_VP8]: "VP8",
+        [AVCodecID.AV_CODEC_ID_VP9]: "VP9",
+        [AVCodecID.AV_CODEC_ID_AV1]: "AV1"
+    }
     const defaultOptions = {
         type: "go-live",
         width: video.width,
@@ -361,11 +369,13 @@ export async function playStream(
     udp.mediaConnection.streamOptions = {
         width: mergedOptions.width,
         height: mergedOptions.height,
+        videoCodec: videoCodecMap[video.codec],
         fps: mergedOptions.frameRate,
         rtcpSenderReportEnabled: mergedOptions.rtcpSenderReportEnabled,
         forceChacha20Encryption: mergedOptions.forceChacha20Encryption
     }
     await udp.mediaConnection.setProtocols();
+    udp.updatePacketizer(); // TODO: put all packetizers here when we remove the old API
     udp.mediaConnection.setSpeaking(true);
     udp.mediaConnection.setVideoStatus(true);
     input.once("end", () => {
