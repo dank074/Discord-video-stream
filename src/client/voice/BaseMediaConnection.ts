@@ -224,6 +224,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
         const stream = d.streams[0];
         this.videoSsrc = stream.ssrc;
         this.rtxSsrc = stream.rtx_ssrc;
+        this.udp.updatePacketizer();
     }
 
     handleProtocolAck(d: SelectProtocolAck): void {
@@ -353,8 +354,6 @@ export abstract class BaseMediaConnection extends EventEmitter {
     ** video and rtx sources are set to ssrc + 1 and ssrc + 2
     */
     public setVideoStatus(bool: boolean): void {
-        if (bool)
-            this.udp.updatePacketizer();
         this.sendOpcode(VoiceOpCodes.VIDEO, {
             audio_ssrc: this.ssrc,
             video_ssrc: bool ? this.videoSsrc : 0,
