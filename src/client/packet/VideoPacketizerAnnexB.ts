@@ -7,6 +7,7 @@ import {
 } from "../processing/AnnexBHelper.js";
 import { extensions } from "../../utils.js";
 import { splitNalu } from "../processing/AnnexBHelper.js";
+import { CodecPayloadType } from "../voice/BaseMediaConnection.js";
 
 /**
  * Annex B format
@@ -60,8 +61,8 @@ import { splitNalu } from "../processing/AnnexBHelper.js";
 class VideoPacketizerAnnexB extends BaseMediaPacketizer {
     private _nalFunctions: AnnexBHelpers;
 
-    constructor(connection: MediaUdp, nalFunctions: AnnexBHelpers) {
-        super(connection, 0x65, true);
+    constructor(connection: MediaUdp, payloadType: number, nalFunctions: AnnexBHelpers) {
+        super(connection, payloadType, true);
         this.srInterval = 5 * connection.mediaConnection.streamOptions.fps * 3; // ~5 seconds, assuming ~3 packets per frame
         this._nalFunctions = nalFunctions;
     }
@@ -157,7 +158,7 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
 
 export class VideoPacketizerH264 extends VideoPacketizerAnnexB {
     constructor(connection: MediaUdp) {
-        super(connection, H264Helpers);
+        super(connection, CodecPayloadType.H264.payload_type, H264Helpers);
     }
     /**
      * The FU indicator octet has the following format:
@@ -213,7 +214,7 @@ export class VideoPacketizerH264 extends VideoPacketizerAnnexB {
 
 export class VideoPacketizerH265 extends VideoPacketizerAnnexB {
     constructor(connection: MediaUdp) {
-        super(connection, H265Helpers);
+        super(connection, CodecPayloadType.H265.payload_type, H265Helpers);
     }
     /**
      * The FU indicator octet has the following format:

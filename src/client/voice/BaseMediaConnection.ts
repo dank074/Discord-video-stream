@@ -14,6 +14,27 @@ type VoiceConnectionStatus =
     resuming: boolean;
 }
 
+export const CodecPayloadType = {
+    "opus": {
+        name: "opus", type: "audio", priority: 1000, payload_type: 120
+    },
+    "H264": {
+        name: "H264", type: "video", priority: 1000, payload_type: 101, rtx_payload_type: 102, encode: true, decode: true
+    },
+    "H265": {
+        name: "H265", type: "video", priority: 1000, payload_type: 103, rtx_payload_type: 104, encode: true, decode: true
+    },
+    "VP8": {
+        name: "VP8", type: "video", priority: 1000, payload_type: 105, rtx_payload_type: 106, encode: true, decode: true
+    },
+    "VP9": {
+        name: "VP9", type: "video", priority: 1000, payload_type: 107, rtx_payload_type: 108, encode: true, decode: true
+    },
+    "AV1": {
+        name: "AV1", type: "video", priority: 1000, payload_type: 107, rtx_payload_type: 108, encode: true, decode: true
+    }
+}
+
 export interface StreamOptions {
     /**
      * Video output width
@@ -309,12 +330,7 @@ export abstract class BaseMediaConnection {
     setProtocols(ip: string, port: number): void {
         this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
             protocol: "udp",
-            codecs: [
-                { name: "opus", type: "audio", priority: 1000, payload_type: 120 },
-                { name: normalizeVideoCodec(this.streamOptions.videoCodec), type: "video", priority: 1000, payload_type: 101, rtx_payload_type: 102, encode: true, decode: true}
-                //{ name: "VP8", type: "video", priority: 3000, payload_type: 103, rtx_payload_type: 104, encode: true, decode: true }
-                //{ name: "VP9", type: "video", priority: 3000, payload_type: 105, rtx_payload_type: 106 },
-            ],
+            codecs: Object.values(CodecPayloadType),
             data: {
                 address: ip,
                 port: port,
