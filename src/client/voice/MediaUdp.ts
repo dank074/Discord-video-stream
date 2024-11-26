@@ -33,6 +33,8 @@ export class MediaUdp {
     private _audioPacketizer: BaseMediaPacketizer;
     private _videoPacketizer?: BaseMediaPacketizer;
     private _encryptionMode: SupportedEncryptionModes | undefined;
+    private _ip?: string;
+    private _port?: number;
 
     constructor(voiceConnection: BaseMediaConnection) {
         this._nonce = 0;
@@ -69,6 +71,16 @@ export class MediaUdp {
 
     public set encryptionMode(mode: SupportedEncryptionModes) {
         this._encryptionMode = mode;
+    }
+
+    public get ip()
+    {
+        return this._ip;
+    }
+
+    public get port()
+    {
+        return this._port;
     }
 
     public async sendAudioFrame(frame: Buffer, frametime: number): Promise<void> {
@@ -147,6 +159,8 @@ export class MediaUdp {
                 }
                 try {
                     const packet = parseLocalPacket(message);
+                    this._ip = packet.ip;
+                    this._port = packet.port;
                     this._mediaConnection.setProtocols(packet.ip, packet.port);
                 } catch(e) { reject(e) }
                 
