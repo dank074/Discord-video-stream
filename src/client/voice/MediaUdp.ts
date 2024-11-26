@@ -30,7 +30,7 @@ export class MediaUdp {
     private _nonce: number;
     private _socket: udpCon.Socket | null = null;
     private _ready: boolean = false;
-    private _audioPacketizer: BaseMediaPacketizer;
+    private _audioPacketizer?: BaseMediaPacketizer;
     private _videoPacketizer?: BaseMediaPacketizer;
     private _encryptionMode: SupportedEncryptionModes | undefined;
     private _ip?: string;
@@ -38,11 +38,7 @@ export class MediaUdp {
 
     constructor(voiceConnection: BaseMediaConnection) {
         this._nonce = 0;
-
         this._mediaConnection = voiceConnection;
-        this._audioPacketizer = new AudioPacketizer(this);
-        this._audioPacketizer.ssrc = this._mediaConnection.ssrc!;
-        this.updateVideoPacketizer();
     }
 
     public getNewNonceBuffer(): Buffer {
@@ -54,7 +50,7 @@ export class MediaUdp {
     }
 
     public get audioPacketizer(): BaseMediaPacketizer {
-        return this._audioPacketizer;
+        return this._audioPacketizer!;
     }
 
     public get videoPacketizer(): BaseMediaPacketizer {
@@ -94,7 +90,9 @@ export class MediaUdp {
         await this.videoPacketizer.sendFrame(frame, frametime);
     }
 
-    public updateVideoPacketizer(): void {
+    public updatePacketizer(): void {
+        this._audioPacketizer = new AudioPacketizer(this);
+        this._audioPacketizer.ssrc = this._mediaConnection.ssrc!;
         const videoCodec = normalizeVideoCodec(this.mediaConnection.streamOptions.videoCodec);
         switch (videoCodec)
         {
@@ -110,7 +108,7 @@ export class MediaUdp {
             default:
                 throw new Error(`Packetizer not implemented for ${videoCodec}`)
         }
-        this._audioPacketizer.ssrc = this._mediaConnection.videoSsrc!;
+        this._videoPacketizer.ssrc = this._mediaConnection.videoSsrc!;
     }
 
     public sendPacket(packet: Buffer): Promise<void> {

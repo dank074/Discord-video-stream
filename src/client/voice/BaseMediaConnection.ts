@@ -354,7 +354,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
     */
     public setVideoStatus(bool: boolean): void {
         if (bool)
-            this.udp.updateVideoPacketizer();
+            this.udp.updatePacketizer();
         this.sendOpcode(VoiceOpCodes.VIDEO, {
             audio_ssrc: this.ssrc,
             video_ssrc: bool ? this.videoSsrc : 0,
