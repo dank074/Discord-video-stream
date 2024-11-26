@@ -161,7 +161,8 @@ export class MediaUdp {
                     const packet = parseLocalPacket(message);
                     this._ip = packet.ip;
                     this._port = packet.port;
-                    this._mediaConnection.setProtocols(packet.ip, packet.port);
+                    this._ready = true;
+                    this._mediaConnection.ready(this);
                 } catch(e) { reject(e) }
                 
                 resolve();

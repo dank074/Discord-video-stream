@@ -46,8 +46,8 @@ export class Streamer {
                 this.client.user.id,
                 channel_id,
                 options ?? {},
-                (voiceUdp) => {
-                    resolve(voiceUdp);
+                (udp) => {
+                    udp.mediaConnection.setProtocols().then(() => resolve(udp))
                 }
             );
             this.signalVideo(false);
@@ -74,8 +74,8 @@ export class Streamer {
                 this.client.user.id,
                 this.voiceConnection.channelId,
                 options ?? {},
-                (voiceUdp) => {
-                    resolve(voiceUdp);
+                (udp) => {
+                    udp.mediaConnection.setProtocols().then(() => resolve(udp))
                 }
             );
         });

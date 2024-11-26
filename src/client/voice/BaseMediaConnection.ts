@@ -5,6 +5,7 @@ import { MediaUdp } from "./MediaUdp.js";
 import { normalizeVideoCodec, STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
 import type { ReadyMessage, SelectProtocolAck } from "./VoiceMessageTypes.js";
 import WebSocket from 'ws';
+import EventEmitter from "node:events";
 
 type VoiceConnectionStatus =
 {
@@ -97,7 +98,7 @@ const defaultStreamOptions: StreamOptions = {
     forceChacha20Encryption: false,
 }
 
-export abstract class BaseMediaConnection {
+export abstract class BaseMediaConnection extends EventEmitter {
     private interval: NodeJS.Timeout | null = null;
     public udp: MediaUdp;
     public guildId: string;
@@ -118,8 +119,10 @@ export abstract class BaseMediaConnection {
     public secretkeyAes256: Promise<webcrypto.CryptoKey> | null = null;
     public secretkeyChacha20: sp.CryptographyKey | null = null;
     private _streamOptions: StreamOptions;
+    private _supportedEncryptionMode?: SupportedEncryptionModes[];
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
+        super();
         this.status = {
             hasSession: false,
             hasToken: false,
@@ -215,15 +218,7 @@ export abstract class BaseMediaConnection {
         this.ssrc = d.ssrc;
         this.address = d.ip;
         this.port = d.port;
-
-        // select encryption mode
-        // From Discord docs: 
-        // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
-        if(d.modes.includes(SupportedEncryptionModes.AES256) && !this.streamOptions.forceChacha20Encryption) {
-            this.udp.encryptionMode = SupportedEncryptionModes.AES256
-        } else {
-            this.udp.encryptionMode = SupportedEncryptionModes.XCHACHA20
-        }
+        this._supportedEncryptionMode = d.modes;
 
         // we hardcoded the STREAMS_SIMULCAST, which will always be array of 1
         const stream = d.streams[0];
@@ -245,9 +240,7 @@ export abstract class BaseMediaConnection {
             false, ["encrypt"]
         );
         this.secretkeyChacha20 = new sp.CryptographyKey(this.secretkey);
-
-        this.ready(this.udp);
-        this.udp.ready = true;
+        this.emit("select_protocol_ack");
     }
 
     setupEvents(): void {
@@ -327,19 +320,34 @@ export abstract class BaseMediaConnection {
     ** Uses vp8 for video
     ** Uses opus for audio
     */
-    setProtocols(ip: string, port: number): void {
-        this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
-            protocol: "udp",
-            codecs: Object.values(CodecPayloadType),
-            data: {
+    setProtocols(): Promise<void> {
+        const { ip, port } = this.udp;
+        // select encryption mode
+        // From Discord docs: 
+        // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
+        if (
+            this._supportedEncryptionMode!.includes(SupportedEncryptionModes.AES256) &&
+            !this.streamOptions.forceChacha20Encryption
+        ) {
+            this.udp.encryptionMode = SupportedEncryptionModes.AES256
+        } else {
+            this.udp.encryptionMode = SupportedEncryptionModes.XCHACHA20
+        }
+        return new Promise((resolve) => {
+            this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
+                protocol: "udp",
+                codecs: Object.values(CodecPayloadType),
+                data: {
+                    address: ip,
+                    port: port,
+                    mode: this.udp.encryptionMode
+                },
                 address: ip,
                 port: port,
                 mode: this.udp.encryptionMode
-            },
-            address: ip,
-            port: port,
-            mode: this.udp.encryptionMode
-        });
+            });
+            this.once("select_protocol_ack", () => resolve());
+        })
     }
 
     /*

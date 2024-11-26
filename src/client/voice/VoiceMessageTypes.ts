@@ -1,8 +1,10 @@
+import type { SupportedEncryptionModes } from "../../utils.js"
+
 export type ReadyMessage = {
     ssrc: number,
     ip: string,
     port: number,
-    modes: string[],
+    modes: SupportedEncryptionModes[],
     experiments: string[],
     streams: StreamInfo[]
 }
