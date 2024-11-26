@@ -395,10 +395,6 @@ export abstract class BaseMediaConnection extends EventEmitter {
     ** Start media connection
     */
     public sendVoice(): Promise<void> {
-        return new Promise<void>((resolve, reject) => {
-            this.udp.createUdp().then(() => {
-                resolve();
-            });
-        })
+        return this.udp.createUdp();
     }
 }
