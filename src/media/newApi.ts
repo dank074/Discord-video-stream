@@ -355,16 +355,17 @@ export async function playStream(
     const mergedOptions = mergeOptions(options);
 
     let udp: MediaUdp;
+    let stopStream;
     if (mergedOptions.type == "go-live")
     {
         udp = await streamer.createStream();
-        input.once("end", () => streamer.stopStream());
+        stopStream = () => streamer.stopStream();
     }
     else
     {
         udp = streamer.voiceConnection.udp;
         streamer.signalVideo(true);
-        input.once("end", () => streamer.signalVideo(false))
+        stopStream = () => streamer.signalVideo(false);
     }
     udp.mediaConnection.streamOptions = {
         width: mergedOptions.width,
@@ -378,10 +379,6 @@ export async function playStream(
     udp.updatePacketizer(); // TODO: put all packetizers here when we remove the old API
     udp.mediaConnection.setSpeaking(true);
     udp.mediaConnection.setVideoStatus(true);
-    input.once("end", () => {
-        udp.mediaConnection.setSpeaking(false);
-        udp.mediaConnection.setVideoStatus(false);
-    })
 
     const vStream = new VideoStream(udp);
     video.stream.pipe(vStream);
@@ -392,4 +389,9 @@ export async function playStream(
         vStream.syncStream = aStream;
         aStream.syncStream = vStream;
     }
+    vStream.once("finish", () => {
+        stopStream();
+        udp.mediaConnection.setSpeaking(false);
+        udp.mediaConnection.setVideoStatus(false);
+    });
 }
