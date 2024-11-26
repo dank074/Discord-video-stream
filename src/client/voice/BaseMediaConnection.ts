@@ -224,9 +224,6 @@ export abstract class BaseMediaConnection extends EventEmitter {
         const stream = d.streams[0];
         this.videoSsrc = stream.ssrc;
         this.rtxSsrc = stream.rtx_ssrc;
-        
-        this.udp.audioPacketizer.ssrc = this.ssrc;
-        this.udp.videoPacketizer.ssrc = this.videoSsrc;
     }
 
     handleProtocolAck(d: SelectProtocolAck): void {

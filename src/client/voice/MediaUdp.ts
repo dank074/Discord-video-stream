@@ -41,6 +41,7 @@ export class MediaUdp {
 
         this._mediaConnection = voiceConnection;
         this._audioPacketizer = new AudioPacketizer(this);
+        this._audioPacketizer.ssrc = this._mediaConnection.ssrc!;
         this.updateVideoPacketizer();
     }
 
@@ -109,6 +110,7 @@ export class MediaUdp {
             default:
                 throw new Error(`Packetizer not implemented for ${videoCodec}`)
         }
+        this._audioPacketizer.ssrc = this._mediaConnection.videoSsrc!;
     }
 
     public sendPacket(packet: Buffer): Promise<void> {
