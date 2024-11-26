@@ -31,7 +31,7 @@ export class MediaUdp {
     private _socket: udpCon.Socket | null = null;
     private _ready: boolean = false;
     private _audioPacketizer: BaseMediaPacketizer;
-    private _videoPacketizer: BaseMediaPacketizer;
+    private _videoPacketizer?: BaseMediaPacketizer;
     private _encryptionMode: SupportedEncryptionModes | undefined;
 
     constructor(voiceConnection: BaseMediaConnection) {
@@ -39,22 +39,7 @@ export class MediaUdp {
 
         this._mediaConnection = voiceConnection;
         this._audioPacketizer = new AudioPacketizer(this);
-
-        const videoCodec = normalizeVideoCodec(this.mediaConnection.streamOptions.videoCodec);
-        switch (videoCodec)
-        {
-            case "H264":
-                this._videoPacketizer = new VideoPacketizerH264(this);
-                break;
-            case "H265":
-                this._videoPacketizer = new VideoPacketizerH265(this);
-                break;
-            case "VP8":
-                this._videoPacketizer = new VideoPacketizerVP8(this);
-                break;
-            default:
-                throw new Error(`Packetizer not implemented for ${videoCodec}`)
-        }
+        this.updateVideoPacketizer();
     }
 
     public getNewNonceBuffer(): Buffer {
@@ -70,7 +55,8 @@ export class MediaUdp {
     }
 
     public get videoPacketizer(): BaseMediaPacketizer {
-        return this._videoPacketizer;
+        // This will never be undefined anyway, so it's safe
+        return this._videoPacketizer!;
     }
 
     public get mediaConnection(): BaseMediaConnection {
@@ -93,6 +79,24 @@ export class MediaUdp {
     public async sendVideoFrame(frame: Buffer, frametime: number): Promise<void> {
         if(!this.ready) return;
         await this.videoPacketizer.sendFrame(frame, frametime);
+    }
+
+    public updateVideoPacketizer(): void {
+        const videoCodec = normalizeVideoCodec(this.mediaConnection.streamOptions.videoCodec);
+        switch (videoCodec)
+        {
+            case "H264":
+                this._videoPacketizer = new VideoPacketizerH264(this);
+                break;
+            case "H265":
+                this._videoPacketizer = new VideoPacketizerH265(this);
+                break;
+            case "VP8":
+                this._videoPacketizer = new VideoPacketizerVP8(this);
+                break;
+            default:
+                throw new Error(`Packetizer not implemented for ${videoCodec}`)
+        }
     }
 
     public sendPacket(packet: Buffer): Promise<void> {
