@@ -50,7 +50,7 @@ export class Streamer {
                     resolve(voiceUdp);
                 }
             );
-            this.signalVideo(guild_id, channel_id, false);
+            this.signalVideo(false);
         });
     }
 
@@ -67,10 +67,7 @@ export class Streamer {
                 return;
             }
 
-            this.signalStream(
-                this.voiceConnection.guildId,
-                this.voiceConnection.channelId
-            );
+            this.signalStream();
     
             this.voiceConnection.streamConnection = new StreamConnection(
                 this.voiceConnection.guildId,
@@ -91,7 +88,7 @@ export class Streamer {
     
         stream.stop();
     
-        this.signalStopStream(stream.guildId, stream.channelId);
+        this.signalStopStream();
     
         this.voiceConnection.streamConnection = undefined;
     }
@@ -104,7 +101,13 @@ export class Streamer {
         this._voiceConnection = undefined;
     }
 
-    public signalVideo(guild_id: string, channel_id: string, video_enabled: boolean): void {
+    public signalVideo(video_enabled: boolean): void {
+        if (!this.voiceConnection)
+            return;
+        const {
+            guildId: guild_id,
+            channelId: channel_id
+        } = this.voiceConnection;
         this.sendOpcode(GatewayOpCodes.VOICE_STATE_UPDATE, {
             guild_id,
             channel_id,
@@ -114,7 +117,13 @@ export class Streamer {
         });
     }
 
-    public signalStream(guild_id: string, channel_id: string): void {
+    public signalStream(): void {
+        if (!this.voiceConnection)
+            return;
+        const {
+            guildId: guild_id,
+            channelId: channel_id
+        } = this.voiceConnection;
         this.sendOpcode(GatewayOpCodes.STREAM_CREATE, {
             type: "guild",
             guild_id,
@@ -128,7 +137,13 @@ export class Streamer {
         });
     }
 
-    public signalStopStream(guild_id: string, channel_id: string): void {
+    public signalStopStream(): void {
+        if (!this.voiceConnection)
+            return;
+        const {
+            guildId: guild_id,
+            channelId: channel_id
+        } = this.voiceConnection;
         this.sendOpcode(GatewayOpCodes.STREAM_DELETE, {
             stream_key: `guild:${guild_id}:${channel_id}:${this.client.user!.id}`
         });
