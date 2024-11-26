@@ -37,7 +37,6 @@ export function streamLivestreamVideo(
         try {
             // command creation
             const command = ffmpeg(input)
-                .output(ffmpegOutput)
                 .addOption('-loglevel', '0')
                 .on('end', () => {
                     resolve("video ended")
@@ -49,6 +48,7 @@ export function streamLivestreamVideo(
 
             // general output options
             command
+                .output(ffmpegOutput)
                 .size(`${streamOpts.width}x${streamOpts.height}`)
                 .fpsOutput(streamOpts.fps)
                 .videoBitrate(`${streamOpts.bitrateKbps}k`)
