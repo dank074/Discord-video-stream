@@ -348,6 +348,8 @@ export abstract class BaseMediaConnection {
     ** video and rtx sources are set to ssrc + 1 and ssrc + 2
     */
     public setVideoStatus(bool: boolean): void {
+        if (bool)
+            this.udp.updateVideoPacketizer();
         this.sendOpcode(VoiceOpCodes.VIDEO, {
             audio_ssrc: this.ssrc,
             video_ssrc: bool ? this.videoSsrc : 0,
