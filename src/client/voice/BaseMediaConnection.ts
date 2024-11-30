@@ -32,7 +32,7 @@ export const CodecPayloadType = {
         name: "VP9", type: "video", priority: 1000, payload_type: 107, rtx_payload_type: 108, encode: true, decode: true
     },
     "AV1": {
-        name: "AV1", type: "video", priority: 1000, payload_type: 107, rtx_payload_type: 108, encode: true, decode: true
+        name: "AV1", type: "video", priority: 1000, payload_type: 109, rtx_payload_type: 110, encode: true, decode: true
     }
 }
 
