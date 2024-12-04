@@ -73,7 +73,7 @@ streamer.client.on("messageCreate", async (msg) => {
             await streamer.client.user.voice.setSuppressed(false);
         }
 
-        streamer.signalVideo(msg.guildId, channel.id, true);
+        streamer.signalVideo(true);
 
         playVideo(args.url, vc);
 
