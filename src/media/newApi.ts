@@ -173,7 +173,7 @@ export function prepareStream(
 
     if (isHttpUrl) {
         command.inputOption('-headers',
-            Object.entries(customHeaders).map((k, v) => `${k}: ${v}`).join("\r\n")
+            Object.entries(customHeaders).map(([k, v]) => `${k}: ${v}`).join("\r\n")
         );
         if (!isHls) {
             command.inputOptions([
