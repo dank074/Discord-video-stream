@@ -86,13 +86,11 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                 // Send as Single NAL Unit Packet.
                 const packetHeader = Buffer.concat([this.makeRtpHeader(isLastNal), this.createExtensionHeader(extensions)]);
 
-                const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
+                const [ciphertext, nonceBuffer] = await this.encryptData(
+                    Buffer.concat([this.createExtensionPayload(extensions), nalu]), packetHeader
+                );
                 const packet = Buffer.concat([
-                    packetHeader,
-                    await this.encryptData(
-                        Buffer.concat([this.createExtensionPayload(extensions), nalu]),
-                        nonceBuffer, packetHeader
-                    ),
+                    packetHeader, ciphertext,
                     nonceBuffer.subarray(0, 4),
                 ]);
                 this.mediaUdp.sendPacket(packet);
@@ -121,12 +119,12 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                         ),
                         data[i]
                     ]);
-                    // nonce buffer used for encryption. 4 bytes are appended to end of packet
-                    const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
+
                     encryptedPackets.push((async() => {
+                        const [ciphertext, nonceBuffer] = await this.encryptData(packetData, packetHeader);
                         return Buffer.concat([
                             packetHeader,
-                            await this.encryptData(packetData, nonceBuffer, packetHeader),
+                            ciphertext,
                             nonceBuffer.subarray(0, 4),
                         ]);
                     })());

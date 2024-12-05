@@ -18,8 +18,8 @@ export class AudioPacketizer extends BaseMediaPacketizer {
     public async createPacket(chunk: Buffer): Promise<Buffer> {
         const header = this.makeRtpHeader();
 
-        const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
-        return Buffer.concat([header, await this.encryptData(chunk, nonceBuffer, header), nonceBuffer.subarray(0, 4)]);
+        const [ciphertext, nonceBuffer] = await this.encryptData(chunk, header);
+        return Buffer.concat([header, ciphertext, nonceBuffer.subarray(0, 4)]);
     }
 
     public override async onFrameSent(bytesSent: number, frametime: number): Promise<void> {

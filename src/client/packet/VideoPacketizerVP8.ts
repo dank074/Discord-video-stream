@@ -42,8 +42,8 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         const packetData = Buffer.concat([this.createExtensionPayload(extensions), this.makeChunk(chunk, isFirstPacket)]);
     
         // nonce buffer used for encryption. 4 bytes are appended to end of packet
-        const nonceBuffer = this.mediaUdp.getNewNonceBuffer();
-        return Buffer.concat([packetHeader, await this.encryptData(packetData, nonceBuffer, packetHeader), nonceBuffer.subarray(0, 4)]);
+        const [ciphertext, nonceBuffer] = await this.encryptData(packetData, packetHeader);
+        return Buffer.concat([packetHeader, ciphertext, nonceBuffer.subarray(0, 4)]);
     }
 
     public override async onFrameSent(packetsSent: number, bytesSent: number, frametime: number): Promise<void> {

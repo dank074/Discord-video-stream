@@ -172,10 +172,9 @@ export class BaseMediaPacketizer {
         senderReport.writeUInt32BE(this._totalPackets % max_int32bit, 12);
         senderReport.writeUInt32BE(this._totalBytes, 16);
 
-        const nonceBuffer = this._mediaUdp.getNewNonceBuffer();
+        const [ciphertext, nonceBuffer] = await this.encryptData(senderReport, packetHeader);
         return Buffer.concat([
-            packetHeader,
-            await this.encryptData(senderReport, nonceBuffer, packetHeader),
+            packetHeader, ciphertext,
             nonceBuffer.subarray(0, 4)
         ]);
     }
@@ -290,25 +289,11 @@ export class BaseMediaPacketizer {
      * @param additionalData 
      * @returns ciphertext
      */
-    public async encryptData(plaintext: Buffer, nonceBuffer: Buffer, additionalData: Buffer): Promise<Buffer> {
-        switch (this._mediaUdp.encryptionMode) {
-            case SupportedEncryptionModes.AES256:
-                return Buffer.from(await webcrypto.subtle.encrypt({
-                    name: "AES-GCM",
-                    iv: nonceBuffer,
-                    additionalData,
-                }, await this._mediaUdp.mediaConnection.secretkeyAes256!, plaintext));
-            case SupportedEncryptionModes.XCHACHA20:
-                if (!sodium)
-                    sodium = SodiumPlus.auto();
-                return await sodium.then(s => s.crypto_aead_xchacha20poly1305_ietf_encrypt(
-                    plaintext, nonceBuffer,
-                    this._mediaUdp.mediaConnection.secretkeyChacha20!,
-                    additionalData
-                ));
-            default:
-                throw new Error("Unsupported encryption mode")
-        }
+    public encryptData(plaintext: Buffer, additionalData: Buffer): Promise<[Buffer, Buffer]> {
+        const encryptor = this._mediaUdp.mediaConnection.transportEncryptor;
+        if (!encryptor)
+            throw new Error("Transport encryptor not defined. Did you forget to select protocol?");
+        return encryptor.encrypt(plaintext, additionalData);
     }
 
     public get mediaUdp(): MediaUdp {

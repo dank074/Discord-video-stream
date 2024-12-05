@@ -7,7 +7,7 @@ import {
     VideoPacketizerH265
 } from '../packet/VideoPacketizerAnnexB.js';
 import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8.js';
-import { max_int32bit, normalizeVideoCodec, SupportedEncryptionModes } from '../../utils.js';
+import { normalizeVideoCodec } from '../../utils.js';
 import { BaseMediaConnection } from './BaseMediaConnection.js';
 
 // credit to discord.js
@@ -27,26 +27,15 @@ function parseLocalPacket(message: Buffer) {
 
 export class MediaUdp {
     private _mediaConnection: BaseMediaConnection;
-    private _nonce: number;
     private _socket: udpCon.Socket | null = null;
     private _ready: boolean = false;
     private _audioPacketizer?: BaseMediaPacketizer;
     private _videoPacketizer?: BaseMediaPacketizer;
-    private _encryptionMode: SupportedEncryptionModes | undefined;
     private _ip?: string;
     private _port?: number;
 
     constructor(voiceConnection: BaseMediaConnection) {
-        this._nonce = 0;
         this._mediaConnection = voiceConnection;
-    }
-
-    public getNewNonceBuffer(): Buffer {
-        const nonceBuffer = this._encryptionMode === SupportedEncryptionModes.AES256 ? Buffer.alloc(12) : Buffer.alloc(24);
-        this._nonce = (this._nonce + 1) % max_int32bit;
-        
-        nonceBuffer.writeUInt32BE(this._nonce, 0);
-        return nonceBuffer;
     }
 
     public get audioPacketizer(): BaseMediaPacketizer {
@@ -60,14 +49,6 @@ export class MediaUdp {
 
     public get mediaConnection(): BaseMediaConnection {
         return this._mediaConnection;
-    }
-
-    public get encryptionMode(): SupportedEncryptionModes | undefined {
-        return this._encryptionMode;
-    }
-
-    public set encryptionMode(mode: SupportedEncryptionModes) {
-        this._encryptionMode = mode;
     }
 
     public get ip()
