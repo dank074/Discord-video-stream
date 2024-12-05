@@ -192,7 +192,7 @@ export function prepareStream(
     let {
         width, height, frameRate, bitrateVideo, bitrateVideoMax, videoCodec, h26xPreset
     } = mergedOptions;
-    command.map("0:v");
+    command.addOutputOption(["-map", "0:v"]);
     command.videoFilter(`scale=${width}:${height}`)
 
     if (frameRate)
@@ -245,7 +245,7 @@ export function prepareStream(
     let { includeAudio, bitrateAudio } = mergedOptions;
     if (includeAudio)
         command
-            .map("0:a?")
+            .addOutputOption(["-map", "0:a?"])
             .audioChannels(2)
             /*
              * I don't have much surround sound material to test this with,
