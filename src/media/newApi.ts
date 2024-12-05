@@ -156,7 +156,6 @@ export function prepareStream(
 
     // command creation
     const command = ffmpeg(input)
-        .output(output)
         .addOption('-loglevel', '0')
 
     // input options
@@ -186,13 +185,15 @@ export function prepareStream(
     }
 
     // general output options
-    command.outputFormat("matroska");
+    command
+        .output(output)
+        .outputFormat("matroska");
 
     // video setup
     let {
         width, height, frameRate, bitrateVideo, bitrateVideoMax, videoCodec, h26xPreset
     } = mergedOptions;
-    command.addOutputOption(["-map", "0:v"]);
+    command.addOutputOption("-map 0:v");
     command.videoFilter(`scale=${width}:${height}`)
 
     if (frameRate)
@@ -245,7 +246,7 @@ export function prepareStream(
     let { includeAudio, bitrateAudio } = mergedOptions;
     if (includeAudio)
         command
-            .addOutputOption(["-map", "0:a?"])
+            .addOutputOption("-map 0:a?")
             .audioChannels(2)
             /*
              * I don't have much surround sound material to test this with,
