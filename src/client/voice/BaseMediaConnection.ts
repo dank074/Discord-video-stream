@@ -1,8 +1,11 @@
-import sp from "sodium-plus";
-import { webcrypto } from "node:crypto";
 import { VoiceOpCodes } from "./VoiceOpCodes.js";
 import { MediaUdp } from "./MediaUdp.js";
-import { normalizeVideoCodec, STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
+import {
+    AES256TransportEncryptor,
+    Chacha20TransportEncryptor,
+    type TransportEncryptor
+} from "../encryptor/TransportEncryptor.js";
+import { STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
 import type { ReadyMessage, SelectProtocolAck } from "./VoiceMessageTypes.js";
 import WebSocket from 'ws';
 import EventEmitter from "node:events";
@@ -115,10 +118,8 @@ export abstract class BaseMediaConnection extends EventEmitter {
     public ssrc: number | null = null;
     public videoSsrc: number | null = null;
     public rtxSsrc: number | null = null;
-    public secretkey: Buffer | null = null;
-    public secretkeyAes256: Promise<webcrypto.CryptoKey> | null = null;
-    public secretkeyChacha20: sp.CryptographyKey | null = null;
     private _streamOptions: StreamOptions;
+    private _transportEncryptor?: TransportEncryptor;
     private _supportedEncryptionMode?: SupportedEncryptionModes[];
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
@@ -149,6 +150,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
 
     public set streamOptions(options: Partial<StreamOptions>) {
         this._streamOptions = { ...this._streamOptions, ...options }
+    }
+
+    public get transportEncryptor() {
+        return this._transportEncryptor;
     }
 
     stop(): void {
@@ -228,16 +233,16 @@ export abstract class BaseMediaConnection extends EventEmitter {
     }
 
     handleProtocolAck(d: SelectProtocolAck): void {
-        this.secretkey = Buffer.from(d.secret_key);
-        this.secretkeyAes256 = webcrypto.subtle.importKey("raw", 
-            this.secretkey,
-            {
-                name: "AES-GCM",
-                length: 32
-            },
-            false, ["encrypt"]
-        );
-        this.secretkeyChacha20 = new sp.CryptographyKey(this.secretkey);
+        const secretKey = Buffer.from(d.secret_key);
+        switch (d.mode)
+        {
+            case SupportedEncryptionModes.AES256:
+                this._transportEncryptor = new AES256TransportEncryptor(secretKey);
+                break;
+            case SupportedEncryptionModes.XCHACHA20:
+                this._transportEncryptor = new Chacha20TransportEncryptor(secretKey);
+                break;
+        }
         this.emit("select_protocol_ack");
     }
 
@@ -323,13 +328,14 @@ export abstract class BaseMediaConnection extends EventEmitter {
         // select encryption mode
         // From Discord docs: 
         // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
+        let encryptionMode: SupportedEncryptionModes;
         if (
             this._supportedEncryptionMode!.includes(SupportedEncryptionModes.AES256) &&
             !this.streamOptions.forceChacha20Encryption
         ) {
-            this.udp.encryptionMode = SupportedEncryptionModes.AES256
+            encryptionMode = SupportedEncryptionModes.AES256
         } else {
-            this.udp.encryptionMode = SupportedEncryptionModes.XCHACHA20
+            encryptionMode = SupportedEncryptionModes.XCHACHA20
         }
         return new Promise((resolve) => {
             this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
@@ -338,11 +344,11 @@ export abstract class BaseMediaConnection extends EventEmitter {
                 data: {
                     address: ip,
                     port: port,
-                    mode: this.udp.encryptionMode
+                    mode: encryptionMode
                 },
                 address: ip,
                 port: port,
-                mode: this.udp.encryptionMode
+                mode: encryptionMode
             });
             this.once("select_protocol_ack", () => resolve());
         })
