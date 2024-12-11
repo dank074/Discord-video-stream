@@ -120,14 +120,13 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
                         data[i]
                     ]);
 
-                    encryptedPackets.push((async() => {
-                        const [ciphertext, nonceBuffer] = await this.encryptData(packetData, packetHeader);
-                        return Buffer.concat([
+                    encryptedPackets.push(this.encryptData(packetData, packetHeader)
+                        .then(([ciphertext, nonceBuffer]) => Buffer.concat([
                             packetHeader,
                             ciphertext,
                             nonceBuffer.subarray(0, 4),
-                        ]);
-                    })());
+                        ]))
+                    );
                 }
 
                 for (const packet of await Promise.all(encryptedPackets))
