@@ -390,9 +390,12 @@ export async function playStream(
         vStream.syncStream = aStream;
         aStream.syncStream = vStream;
     }
-    vStream.once("finish", () => {
-        stopStream();
-        udp.mediaConnection.setSpeaking(false);
-        udp.mediaConnection.setVideoStatus(false);
+    return new Promise<void>((resolve) => {
+        vStream.once("finish", () => {
+            stopStream();
+            udp.mediaConnection.setSpeaking(false);
+            udp.mediaConnection.setVideoStatus(false);
+            resolve();
+        });
     });
 }
