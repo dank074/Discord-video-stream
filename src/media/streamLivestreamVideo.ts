@@ -7,6 +7,13 @@ import { normalizeVideoCodec } from '../utils.js';
 import PCancelable from 'p-cancelable';
 import { demux } from './LibavDemuxer.js';
 
+/**
+ * @deprecated This API has a number of design issues that makes it error-prone
+ * and hard to customize. Please use the new API instead.
+ * 
+ * See https://github.com/dank074/Discord-video-stream/pull/125 for information
+ * on the new API and example usage.
+ */
 export function streamLivestreamVideo(
     input: string | Readable,
     mediaUdp: MediaUdp,
