@@ -23,7 +23,7 @@ export class Streamer {
         //listen for messages
         this.client.on('raw', (packet: GatewayEvent) => {
             // @ts-expect-error I don't know how to make this work with TypeScript, so whatever
-            this.emit(packet.t, packet.d);
+            this._gatewayEmitter.emit(packet.t, packet.d);
         });
     }
 
