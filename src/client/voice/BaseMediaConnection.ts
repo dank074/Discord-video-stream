@@ -126,7 +126,6 @@ export abstract class BaseMediaConnection extends EventEmitter {
     public webRtcParams: WebRtcParameters | null = null;
     private _streamOptions: StreamOptions;
     private _transportEncryptor?: TransportEncryptor;
-    private _supportedEncryptionMode?: SupportedEncryptionModes[];
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
         super();
@@ -337,10 +336,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
         // From Discord docs: 
         // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
         let encryptionMode: SupportedEncryptionModes;
-        if (!this._supportedEncryptionMode)
+        if (!this.webRtcParams)
             throw new Error("WebRTC connection not ready");
         if (
-            this._supportedEncryptionMode.includes(SupportedEncryptionModes.AES256) &&
+            this.webRtcParams.supportedEncryptionModes.includes(SupportedEncryptionModes.AES256) &&
             !this.streamOptions.forceChacha20Encryption
         ) {
             encryptionMode = SupportedEncryptionModes.AES256
