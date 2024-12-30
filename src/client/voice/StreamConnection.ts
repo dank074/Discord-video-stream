@@ -7,10 +7,12 @@ export class StreamConnection extends BaseMediaConnection
     private _serverId: string | null = null;
 
     public override setSpeaking(speaking: boolean): void {
+        if (!this.webRtcParams)
+            throw new Error("WebRTC connection not ready");
         this.sendOpcode(VoiceOpCodes.SPEAKING, {
             delay: 0,
             speaking: speaking ? 2 : 0,
-            ssrc: this.ssrc
+            ssrc: this.webRtcParams.audioSsrc
         });
     }
 

@@ -1,14 +1,14 @@
-import udpCon from 'dgram';
-import { isIPv4 } from 'net';
+import udpCon from 'node:dgram';
+import { isIPv4 } from 'node:net';
 import { AudioPacketizer } from '../packet/AudioPacketizer.js';
-import { BaseMediaPacketizer } from '../packet/BaseMediaPacketizer.js';
 import {
     VideoPacketizerH264,
     VideoPacketizerH265
 } from '../packet/VideoPacketizerAnnexB.js';
 import { VideoPacketizerVP8 } from '../packet/VideoPacketizerVP8.js';
 import { normalizeVideoCodec } from '../../utils.js';
-import { BaseMediaConnection } from './BaseMediaConnection.js';
+import type { BaseMediaPacketizer } from '../packet/BaseMediaPacketizer.js';
+import type { BaseMediaConnection } from './BaseMediaConnection.js';
 
 // credit to discord.js
 function parseLocalPacket(message: Buffer) {
@@ -28,7 +28,7 @@ function parseLocalPacket(message: Buffer) {
 export class MediaUdp {
     private _mediaConnection: BaseMediaConnection;
     private _socket: udpCon.Socket | null = null;
-    private _ready: boolean = false;
+    private _ready = false;
     private _audioPacketizer?: BaseMediaPacketizer;
     private _videoPacketizer?: BaseMediaPacketizer;
     private _ip?: string;
@@ -38,13 +38,13 @@ export class MediaUdp {
         this._mediaConnection = voiceConnection;
     }
 
-    public get audioPacketizer(): BaseMediaPacketizer {
-        return this._audioPacketizer!;
+    public get audioPacketizer(): BaseMediaPacketizer | undefined {
+        return this._audioPacketizer;
     }
 
-    public get videoPacketizer(): BaseMediaPacketizer {
+    public get videoPacketizer(): BaseMediaPacketizer | undefined {
         // This will never be undefined anyway, so it's safe
-        return this._videoPacketizer!;
+        return this._videoPacketizer;
     }
 
     public get mediaConnection(): BaseMediaConnection {
@@ -63,17 +63,20 @@ export class MediaUdp {
 
     public async sendAudioFrame(frame: Buffer, frametime: number): Promise<void> {
         if(!this.ready) return;
-        await this.audioPacketizer.sendFrame(frame, frametime);
+        await this.audioPacketizer?.sendFrame(frame, frametime);
     }
 
     public async sendVideoFrame(frame: Buffer, frametime: number): Promise<void> {
         if(!this.ready) return;
-        await this.videoPacketizer.sendFrame(frame, frametime);
+        await this.videoPacketizer?.sendFrame(frame, frametime);
     }
 
     public updatePacketizer(): void {
+        if (!this.mediaConnection.webRtcParams)
+            throw new Error("WebRTC connection not ready");
+        const { audioSsrc, videoSsrc } = this.mediaConnection.webRtcParams;
         this._audioPacketizer = new AudioPacketizer(this);
-        this._audioPacketizer.ssrc = this._mediaConnection.ssrc!;
+        this._audioPacketizer.ssrc = audioSsrc;
         const videoCodec = normalizeVideoCodec(this.mediaConnection.streamOptions.videoCodec);
         switch (videoCodec)
         {
@@ -89,13 +92,16 @@ export class MediaUdp {
             default:
                 throw new Error(`Packetizer not implemented for ${videoCodec}`)
         }
-        this._videoPacketizer.ssrc = this._mediaConnection.videoSsrc!;
+        this._videoPacketizer.ssrc = videoSsrc;
     }
 
     public sendPacket(packet: Buffer): Promise<void> {
+        if (!this.mediaConnection.webRtcParams)
+            throw new Error("WebRTC connection not ready");
+        const { address, port } = this.mediaConnection.webRtcParams;
         return new Promise<void>((resolve, reject) => {
             try {
-            this._socket?.send(packet, 0, packet.length, this._mediaConnection.port!, this._mediaConnection.address!, (error, bytes) => {
+            this._socket?.send(packet, 0, packet.length, port, address, (error, bytes) => {
                 if (error) {
                     console.log("ERROR", error);
                     reject(error);
@@ -106,7 +112,7 @@ export class MediaUdp {
         });
     }
 
-    handleIncoming(buf: any): void {
+    handleIncoming(buf: unknown): void {
         //console.log("RECEIVED PACKET", buf);
     }
 
@@ -126,6 +132,9 @@ export class MediaUdp {
     }
 
     public createUdp(): Promise<void> {
+        if (!this.mediaConnection.webRtcParams)
+            throw new Error("WebRTC connection not ready");
+        const { audioSsrc, address, port } = this.mediaConnection.webRtcParams;
         return new Promise<void>((resolve, reject) => {
             this._socket = udpCon.createSocket('udp4');
 
@@ -146,16 +155,16 @@ export class MediaUdp {
                 } catch(e) { reject(e) }
                 
                 resolve();
-                this._socket!.on('message', this.handleIncoming);
+                this._socket?.on('message', this.handleIncoming);
             });
 
             const blank = Buffer.alloc(74);
             
             blank.writeUInt16BE(1, 0);
 			blank.writeUInt16BE(70, 2);
-            blank.writeUInt32BE(this._mediaConnection.ssrc!, 4);
+            blank.writeUInt32BE(audioSsrc, 4);
 
-            this._socket.send(blank, 0, blank.length, this._mediaConnection.port!, this._mediaConnection.address!, (error, bytes) => {
+            this._socket.send(blank, 0, blank.length, port, address, (error, bytes) => {
                 if (error) {
                     reject(error)
                 }
