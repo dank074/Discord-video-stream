@@ -1,11 +1,11 @@
 import ffmpeg from 'fluent-ffmpeg';
+import PCancelable from 'p-cancelable';
 import { AudioStream } from "./AudioStream.js";
-import { MediaUdp } from '../client/voice/MediaUdp.js';
-import { Readable, PassThrough } from 'stream';
+import { type Readable, PassThrough } from 'node:stream';
 import { VideoStream } from './VideoStream.js';
 import { normalizeVideoCodec } from '../utils.js';
-import PCancelable from 'p-cancelable';
 import { demux } from './LibavDemuxer.js';
+import type { MediaUdp } from '../client/voice/MediaUdp.js';
 
 export function streamLivestreamVideo(
     input: string | Readable,
@@ -42,7 +42,7 @@ export function streamLivestreamVideo(
                     resolve("video ended")
                 })
                 .on("error", (err, stdout, stderr) => {
-                    reject('cannot play video ' + err.message)
+                    reject(`cannot play video ${err.message}`)
                 })
                 .on('stderr', console.error);
 
@@ -115,7 +115,7 @@ export function streamLivestreamVideo(
 
             if (isHttpUrl) {
                 command.inputOption('-headers',
-                    Object.keys(headers).map(key => key + ": " + headers[key]).join("\r\n")
+                    Object.entries(headers).map(([k, v]) => `${k}: ${v}`).join("\r\n")
                 );
                 if (!isHls) {
                     command.inputOptions([
@@ -135,8 +135,10 @@ export function streamLivestreamVideo(
                 command.kill("SIGINT");
                 throw e;
             });
+            if (!video)
+                throw new Error("No video stream");
             const videoStream = new VideoStream(mediaUdp);
-            video!.stream.pipe(videoStream)
+            video.stream.pipe(videoStream)
             if (audio && includeAudio) {
                 const audioStream = new AudioStream(mediaUdp);
                 audio.stream.pipe(audioStream);
@@ -146,7 +148,7 @@ export function streamLivestreamVideo(
         } catch (e) {
             //audioStream.end();
             //videoStream.end();
-            reject("cannot play video " + (e as Error).message);
+            reject(`cannot play video ${(e as Error).message}`);
         }
     })
 }
