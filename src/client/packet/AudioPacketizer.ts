@@ -1,4 +1,4 @@
-import { MediaUdp } from "../voice/MediaUdp.js";
+import type { MediaUdp } from "../voice/MediaUdp.js";
 import { BaseMediaPacketizer } from "./BaseMediaPacketizer.js";
 import { CodecPayloadType } from "../voice/BaseMediaConnection.js";
 
