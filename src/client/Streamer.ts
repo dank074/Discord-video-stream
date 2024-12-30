@@ -1,4 +1,4 @@
-import { EventEmitter } from "node:stream";
+import { EventEmitter } from "node:events";
 import { VoiceConnection } from "./voice/VoiceConnection.js";
 import { StreamConnection } from "./voice/StreamConnection.js";
 import { GatewayOpCodes } from "./GatewayOpCodes.js";
