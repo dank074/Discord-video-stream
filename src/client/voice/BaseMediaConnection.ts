@@ -5,7 +5,7 @@ import {
     Chacha20TransportEncryptor,
     type TransportEncryptor
 } from "../encryptor/TransportEncryptor.js";
-import { STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
+import { STREAMS_SIMULCAST, SupportedEncryptionModes, type SupportedVideoCodec } from "../../utils.js";
 import type { ReadyMessage, SelectProtocolAck } from "./VoiceMessageTypes.js";
 import WebSocket from 'ws';
 import EventEmitter from "node:events";
@@ -188,7 +188,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
                 return
             this.status.started = true;
 
-            this.ws = new WebSocket("wss://" + this.server + "/?v=7", {
+            this.ws = new WebSocket(`wss://${this.server}/?v=7`, {
                 followRedirects: true
             });
             this.ws.on("open", () => {
@@ -247,10 +247,11 @@ export abstract class BaseMediaConnection extends EventEmitter {
     }
 
     setupEvents(): void {
-        this.ws?.on('message', (data: any) => {
+        this.ws?.on('message', (data: string) => {
+            // Maybe map out all the types here to avoid any?
             const { op, d } = JSON.parse(data);
 
-            if (op == VoiceOpCodes.READY) { // ready
+            if (op === VoiceOpCodes.READY) { // ready
                 this.handleReady(d);
                 this.sendVoice().then(() => this.ready(this.udp));
                 this.setVideoStatus(false);
@@ -289,7 +290,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
         }, interval);
     }
 
-    sendOpcode(code:number, data:any): void {
+    sendOpcode(code:number, data: unknown): void {
         this.ws?.send(JSON.stringify({
             op: code,
             d: data
@@ -329,8 +330,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
         // From Discord docs: 
         // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
         let encryptionMode: SupportedEncryptionModes;
+        if (!this._supportedEncryptionMode)
+            throw new Error("Stream is not ready");
         if (
-            this._supportedEncryptionMode!.includes(SupportedEncryptionModes.AES256) &&
+            this._supportedEncryptionMode.includes(SupportedEncryptionModes.AES256) &&
             !this.streamOptions.forceChacha20Encryption
         ) {
             encryptionMode = SupportedEncryptionModes.AES256
