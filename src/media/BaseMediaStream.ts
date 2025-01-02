@@ -1,12 +1,12 @@
 import { Log } from "debug-level";
-import { setTimeout } from "timers/promises";
+import { setTimeout } from "node:timers/promises";
 import { Writable } from "node:stream";
 import { combineLoHi } from "./utils.js";
 import type { Packet } from "@libav.js/variant-webcodecs";
 
 export class BaseMediaStream extends Writable {
     private _pts?: number;
-    private _syncTolerance: number = 5;
+    private _syncTolerance = 5;
     private _loggerSend: Log;
     private _loggerSync: Log;
     private _loggerSleep: Log;
@@ -16,7 +16,7 @@ export class BaseMediaStream extends Writable {
     private _startPts?: number;
 
     public syncStream?: BaseMediaStream;
-    constructor(type: string, noSleep: boolean = false) {
+    constructor(type: string, noSleep = false) {
         super({ objectMode: true, highWaterMark: 0 });
         this._loggerSend = new Log(`stream:${type}:send`);
         this._loggerSync = new Log(`stream:${type}:sync`);
@@ -45,10 +45,10 @@ export class BaseMediaStream extends Writable {
             this._pts - this.syncStream.pts > this._syncTolerance
         )
         {
-            if (i == 0)
+            if (i === 0)
             {
-                this._loggerSync.debug(`Waiting for other stream (%f - %f > %f)`,
-                    this._pts, this.syncStream._pts, this._syncTolerance
+                this._loggerSync.debug(
+                    `Waiting for other stream (${this._pts} - ${this.syncStream._pts} > ${this._syncTolerance})`,
                 );
             }
             await setTimeout(1);
@@ -65,11 +65,13 @@ export class BaseMediaStream extends Writable {
         await this._waitForOtherStream();
 
         const { data, ptshi, pts, durationhi, duration, time_base_num, time_base_den } = frame;
+        // biome-ignore lint/style/noNonNullAssertion: this will never happen with our media stream
         const frametime = combineLoHi(durationhi!, duration!) / time_base_den! * time_base_num! * 1000;
 
         const start = performance.now();
         await this._sendFrame(Buffer.from(data), frametime);
         const end = performance.now();
+        // biome-ignore lint/style/noNonNullAssertion: this will never happen with our media stream
         this._pts = combineLoHi(ptshi!, pts!) / time_base_den! * time_base_num! * 1000;
         if (this._startPts === undefined)
             this._startPts = this._pts;
@@ -92,8 +94,8 @@ export class BaseMediaStream extends Writable {
                 frametime
             }, `Frame takes too long to send (${(ratio * 100).toFixed(2)}% frametime)`)
         }
-        let now = performance.now();
-        let sleep = Math.max(0, this._pts - this._startPts + frametime - (now - this._startTime));
+        const now = performance.now();
+        const sleep = Math.max(0, this._pts - this._startPts + frametime - (now - this._startTime));
         this._loggerSleep.debug(`Sleeping for ${sleep}ms`);
         if (this._noSleep)
             callback(null);

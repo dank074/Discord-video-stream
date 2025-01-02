@@ -1,10 +1,10 @@
-import { MediaUdp } from "../client/voice/MediaUdp.js";
+import type { MediaUdp } from "../client/voice/MediaUdp.js";
 import { BaseMediaStream } from "./BaseMediaStream.js";
 
 export class AudioStream extends BaseMediaStream {
     public udp: MediaUdp;
 
-    constructor(udp: MediaUdp, noSleep: boolean = false) {
+    constructor(udp: MediaUdp, noSleep = false) {
         super("audio", noSleep);
         this.udp = udp;
     }

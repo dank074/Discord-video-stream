@@ -5,7 +5,7 @@ import {
     Chacha20TransportEncryptor,
     type TransportEncryptor
 } from "../encryptor/TransportEncryptor.js";
-import { STREAMS_SIMULCAST, SupportedEncryptionModes, SupportedVideoCodec } from "../../utils.js";
+import { STREAMS_SIMULCAST, SupportedEncryptionModes, type SupportedVideoCodec } from "../../utils.js";
 import type { ReadyMessage, SelectProtocolAck } from "./VoiceMessageTypes.js";
 import WebSocket from 'ws';
 import EventEmitter from "node:events";
@@ -16,6 +16,15 @@ type VoiceConnectionStatus =
     hasToken: boolean;
     started: boolean;
     resuming: boolean;
+}
+
+type WebRtcParameters = {
+    address: string,
+    port: number,
+    audioSsrc: number,
+    videoSsrc: number,
+    rtxSsrc: number
+    supportedEncryptionModes: SupportedEncryptionModes[]
 }
 
 export const CodecPayloadType = {
@@ -113,14 +122,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
     public server: string | null = null; //websocket url
     public token: string | null = null;
     public session_id: string | null = null;
-    public address: string | null = null;
-    public port: number | null = null;
-    public ssrc: number | null = null;
-    public videoSsrc: number | null = null;
-    public rtxSsrc: number | null = null;
+
+    public webRtcParams: WebRtcParameters | null = null;
     private _streamOptions: StreamOptions;
     private _transportEncryptor?: TransportEncryptor;
-    private _supportedEncryptionMode?: SupportedEncryptionModes[];
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
         super();
@@ -188,7 +193,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
                 return
             this.status.started = true;
 
-            this.ws = new WebSocket("wss://" + this.server + "/?v=7", {
+            this.ws = new WebSocket(`wss://${this.server}/?v=7`, {
                 followRedirects: true
             });
             this.ws.on("open", () => {
@@ -220,15 +225,16 @@ export abstract class BaseMediaConnection extends EventEmitter {
     }
 
     handleReady(d: ReadyMessage): void {
-        this.ssrc = d.ssrc;
-        this.address = d.ip;
-        this.port = d.port;
-        this._supportedEncryptionMode = d.modes;
-
         // we hardcoded the STREAMS_SIMULCAST, which will always be array of 1
         const stream = d.streams[0];
-        this.videoSsrc = stream.ssrc;
-        this.rtxSsrc = stream.rtx_ssrc;
+        this.webRtcParams = {
+            address: d.ip,
+            port: d.port,
+            audioSsrc: d.ssrc,
+            videoSsrc: stream.ssrc,
+            rtxSsrc: stream.rtx_ssrc,
+            supportedEncryptionModes: d.modes
+        }
         this.udp.updatePacketizer();
     }
 
@@ -247,10 +253,11 @@ export abstract class BaseMediaConnection extends EventEmitter {
     }
 
     setupEvents(): void {
-        this.ws?.on('message', (data: any) => {
+        this.ws?.on('message', (data: string) => {
+            // Maybe map out all the types here to avoid any?
             const { op, d } = JSON.parse(data);
 
-            if (op == VoiceOpCodes.READY) { // ready
+            if (op === VoiceOpCodes.READY) { // ready
                 this.handleReady(d);
                 this.sendVoice().then(() => this.ready(this.udp));
                 this.setVideoStatus(false);
@@ -289,7 +296,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
         }, interval);
     }
 
-    sendOpcode(code:number, data:any): void {
+    sendOpcode(code:number, data: unknown): void {
         this.ws?.send(JSON.stringify({
             op: code,
             d: data
@@ -329,8 +336,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
         // From Discord docs: 
         // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
         let encryptionMode: SupportedEncryptionModes;
+        if (!this.webRtcParams)
+            throw new Error("WebRTC connection not ready");
         if (
-            this._supportedEncryptionMode!.includes(SupportedEncryptionModes.AES256) &&
+            this.webRtcParams.supportedEncryptionModes.includes(SupportedEncryptionModes.AES256) &&
             !this.streamOptions.forceChacha20Encryption
         ) {
             encryptionMode = SupportedEncryptionModes.AES256
@@ -360,18 +369,21 @@ export abstract class BaseMediaConnection extends EventEmitter {
     ** video and rtx sources are set to ssrc + 1 and ssrc + 2
     */
     public setVideoStatus(bool: boolean): void {
+        if (!this.webRtcParams)
+            throw new Error("WebRTC connection not ready");
+        const { audioSsrc, videoSsrc, rtxSsrc } = this.webRtcParams;
         this.sendOpcode(VoiceOpCodes.VIDEO, {
-            audio_ssrc: this.ssrc,
-            video_ssrc: bool ? this.videoSsrc : 0,
-            rtx_ssrc: bool ? this.rtxSsrc : 0,
+            audio_ssrc: audioSsrc,
+            video_ssrc: bool ? videoSsrc : 0,
+            rtx_ssrc: bool ? rtxSsrc : 0,
             streams: [
                 { 
                     type:"video",
                     rid:"100",
-                    ssrc: bool ? this.videoSsrc : 0,
+                    ssrc: bool ? videoSsrc : 0,
                     active:true,
                     quality:100,
-                    rtx_ssrc:bool ? this.rtxSsrc : 0,
+                    rtx_ssrc:bool ? rtxSsrc : 0,
                     max_bitrate: this.streamOptions.maxBitrateKbps * 1000,
                     max_framerate: this.streamOptions.fps,
                     max_resolution: {
@@ -388,11 +400,13 @@ export abstract class BaseMediaConnection extends EventEmitter {
     ** Set speaking status
     ** speaking -> speaking status on or off
     */
-   public setSpeaking(speaking: boolean): void {
+    public setSpeaking(speaking: boolean): void {
+        if (!this.webRtcParams)
+            throw new Error("WebRTC connection not ready");
         this.sendOpcode(VoiceOpCodes.SPEAKING, {
             delay: 0,
             speaking: speaking ? 1 : 0,
-            ssrc: this.ssrc
+            ssrc: this.webRtcParams.audioSsrc
         });
     }
 

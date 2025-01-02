@@ -1,5 +1,5 @@
+import type { MediaUdp } from "../voice/MediaUdp.js";
 import { extensions, max_int16bit } from "../../utils.js";
-import { MediaUdp } from "../voice/MediaUdp.js";
 import { BaseMediaPacketizer } from "./BaseMediaPacketizer.js";
 import { CodecPayloadType } from "../voice/BaseMediaConnection.js";
 
@@ -34,7 +34,7 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         await this.onFrameSent(data.length, bytesSent, frametime);
     }
 
-    public async createPacket(chunk: any, isLastPacket = true, isFirstPacket = true): Promise<Buffer> {
+    public async createPacket(chunk: Buffer, isLastPacket = true, isFirstPacket = true): Promise<Buffer> {
         if(chunk.length > this.mtu) throw Error('error packetizing video frame: frame is larger than mtu');
 
         const packetHeader = Buffer.concat([this.makeRtpHeader(isLastPacket), this.createExtensionHeader(extensions)]);
@@ -53,7 +53,7 @@ export class VideoPacketizerVP8 extends BaseMediaPacketizer {
         this.incrementPictureId();
     }
 
-    private makeChunk(frameData:any, isFirstPacket: boolean): Buffer {
+    private makeChunk(frameData: Buffer, isFirstPacket: boolean): Buffer {
         // vp8 payload descriptor
         const payloadDescriptorBuf = Buffer.alloc(2);
     

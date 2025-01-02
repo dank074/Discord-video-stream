@@ -1,8 +1,8 @@
 import sp from "sodium-plus";
 import { Log } from "debug-level";
 import { webcrypto } from 'node:crypto';
-import { MediaUdp } from "../voice/MediaUdp.js";
 import { max_int16bit, max_int32bit, SupportedEncryptionModes } from "../../utils.js";
+import type { MediaUdp } from "../voice/MediaUdp.js";
 
 const { SodiumPlus, CryptographyKey } = sp;
 
@@ -127,7 +127,7 @@ export class BaseMediaPacketizer {
         this._timestamp = (this._timestamp + incrementBy) % max_int32bit;
     }
 
-    public makeRtpHeader(isLastPacket: boolean = true): Buffer {
+    public makeRtpHeader(isLastPacket = true): Buffer {
         if (!this._ssrc)
             throw new Error("SSRC is not set");
 
@@ -207,7 +207,7 @@ export class BaseMediaPacketizer {
      */
     public createExtensionPayload(extensions: { id: number, len: number, val: number}[]): Buffer {
         const extensionsData = [];
-        for(let ext of extensions){
+        for(const ext of extensions){
             /**
              * EXTENSION DATA - each extension payload is 32 bits
              */

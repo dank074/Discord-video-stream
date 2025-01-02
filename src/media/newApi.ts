@@ -159,7 +159,7 @@ export function prepareStream(
         .addOption('-loglevel', '0')
 
     // input options
-    let { hardwareAcceleratedDecoding, minimizeLatency, customHeaders } = mergedOptions;
+    const { hardwareAcceleratedDecoding, minimizeLatency, customHeaders } = mergedOptions;
     if (hardwareAcceleratedDecoding)
         command.inputOption('-hwaccel', 'auto');
 
@@ -190,7 +190,7 @@ export function prepareStream(
         .outputFormat("matroska");
 
     // video setup
-    let {
+    const {
         width, height, frameRate, bitrateVideo, bitrateVideoMax, videoCodec, h26xPreset
     } = mergedOptions;
     command.addOutputOption("-map 0:v");
@@ -243,7 +243,7 @@ export function prepareStream(
     }
 
     // audio setup
-    let { includeAudio, bitrateAudio } = mergedOptions;
+    const { includeAudio, bitrateAudio } = mergedOptions;
     if (includeAudio)
         command
             .addOutputOption("-map 0:a?")
@@ -356,8 +356,8 @@ export async function playStream(
     const mergedOptions = mergeOptions(options);
 
     let udp: MediaUdp;
-    let stopStream;
-    if (mergedOptions.type == "go-live")
+    let stopStream: () => unknown;
+    if (mergedOptions.type === "go-live")
     {
         udp = await streamer.createStream();
         stopStream = () => streamer.stopStream();

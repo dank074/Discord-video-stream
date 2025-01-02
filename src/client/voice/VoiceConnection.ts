@@ -1,4 +1,4 @@
-import { StreamConnection } from './StreamConnection.js';
+import type { StreamConnection } from './StreamConnection.js';
 import { BaseMediaConnection } from './BaseMediaConnection.js';
 
 export class VoiceConnection extends BaseMediaConnection {
