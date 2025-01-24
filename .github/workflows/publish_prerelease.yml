@@ -8,8 +8,14 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
       
-      - uses: actions/setup-node@v4
+      - name: Install Node.js
+        uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: "pnpm"
@@ -20,4 +26,5 @@ jobs:
       - name: Build
         run: pnpm build
 
-      - run: pnpx pkg-pr-new publish
+      - name: Publish
+        run: pnpx pkg-pr-new publish
