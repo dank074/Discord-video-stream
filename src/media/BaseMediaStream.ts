@@ -12,9 +12,10 @@ export class BaseMediaStream extends Writable {
     private _loggerSleep: Log;
 
     private _noSleep: boolean;
+    private _reinitSleep = false;
     private _startTime?: number;
     private _startPts?: number;
-
+    
     public sync = true;
     public syncStream?: BaseMediaStream;
     constructor(type: string, noSleep = false) {
@@ -23,6 +24,27 @@ export class BaseMediaStream extends Writable {
         this._loggerSync = new Log(`stream:${type}:sync`);
         this._loggerSleep = new Log(`stream:${type}:sleep`);
         this._noSleep = noSleep;
+    }
+    get noSleep(): boolean {
+        return this._noSleep;
+    }
+    set noSleep(val: boolean) {
+        if (val)
+        {
+            this._noSleep = true;
+            this._reinitSleep = false;
+        }
+        else
+        {
+            /**
+             * If _noSleep is set to true while _write() is still executing
+             * (for example when waiting on _waitForOtherStream()), it can
+             * cause problems with the timeout calculation code below. So
+             * instead of reinit-ing the sleep mechanism here, we let _write()
+             * do it instead.
+             */
+            this._reinitSleep = true;
+        }
     }
     get pts(): number | undefined {
         return this._pts;
@@ -61,6 +83,12 @@ export class BaseMediaStream extends Writable {
         throw new Error("Not implemented");
     }
     async _write(frame: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
+        // See above on why this is here
+        if (this._reinitSleep)
+        {
+            this._noSleep = this._reinitSleep = false;
+            this._startPts = this._startTime = undefined;
+        }
         if (this._startTime === undefined)
             this._startTime = performance.now();
         await this._waitForOtherStream();
