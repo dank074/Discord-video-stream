@@ -15,6 +15,7 @@ export class BaseMediaStream extends Writable {
     private _startTime?: number;
     private _startPts?: number;
 
+    public sync = true;
     public syncStream?: BaseMediaStream;
     constructor(type: string, noSleep = false) {
         super({ objectMode: true, highWaterMark: 0 });
@@ -38,7 +39,7 @@ export class BaseMediaStream extends Writable {
     {
         let i = 0;
         while (
-            this.syncStream &&
+            this.sync && this.syncStream &&
             !this.syncStream.writableEnded &&
             this.syncStream.pts !== undefined &&
             this._pts !== undefined &&
@@ -75,6 +76,7 @@ export class BaseMediaStream extends Writable {
         this._pts = combineLoHi(ptshi!, pts!) / time_base_den! * time_base_num! * 1000;
         if (this._startPts === undefined)
             this._startPts = this._pts;
+        this.emit("pts", this._pts);
 
         const sendTime = end - start;
         const ratio = sendTime / frametime;
