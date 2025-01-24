@@ -136,12 +136,24 @@ export class BaseMediaStream extends Writable {
             }, `Frame takes too long to send (${(ratio * 100).toFixed(2)}% frametime)`)
         }
         const now = performance.now();
-        const sleep = Math.max(0, this._pts - this._startPts + frametime - (now - this._startTime));
-        this._loggerSleep.debug(`Sleeping for ${sleep}ms`);
         if (this._noSleep)
+        {
             callback(null);
+        }
         else
+        {
+            const sleep = Math.max(0, this._pts - this._startPts + frametime - (now - this._startTime));
+            this._loggerSleep.debug({
+                stats: {
+                    pts: this._pts,
+                    startPts: this._startPts,
+                    time: now,
+                    startTime: this._startTime,
+                    frametime
+                }
+            }, `Sleeping for ${sleep}ms`);
             setTimeout(sleep).then(() => callback(null));
+        }
     }
     _destroy(error: Error | null, callback: (error?: Error | null) => void): void {
         super._destroy(error, callback);
