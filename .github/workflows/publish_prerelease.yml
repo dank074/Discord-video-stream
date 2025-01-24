@@ -13,12 +13,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
+          cache: "pnpm"
 
       - name: Install dependencies
-        run: npm install
+        run: pnpm install
 
       - name: Build
-        run: npm build
+        run: pnpm build
 
-      - run: npx pkg-pr-new publish
+      - run: pnpx pkg-pr-new publish
