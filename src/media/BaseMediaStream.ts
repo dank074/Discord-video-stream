@@ -15,8 +15,8 @@ export class BaseMediaStream extends Writable {
     private _reinitSleep = false;
     private _startTime?: number;
     private _startPts?: number;
-    
-    public sync = true;
+    private _sync = true;
+
     public syncStream?: BaseMediaStream;
     constructor(type: string, noSleep = false) {
         super({ objectMode: true, highWaterMark: 0 });
@@ -24,6 +24,17 @@ export class BaseMediaStream extends Writable {
         this._loggerSync = new Log(`stream:${type}:sync`);
         this._loggerSleep = new Log(`stream:${type}:sleep`);
         this._noSleep = noSleep;
+    }
+
+    get sync(): boolean {
+        return this._sync;
+    }
+    set sync(val: boolean) {
+        this._sync = val;
+        if (val)
+            this._loggerSync.debug("Sync enabled");
+        else
+            this._loggerSync.debug("Sync disabled");
     }
     get noSleep(): boolean {
         return this._noSleep;
