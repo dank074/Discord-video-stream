@@ -287,6 +287,12 @@ export type PlayStreamOptions = {
     frameRate: number,
 
     /**
+     * Same as ffmpeg's `readrate_initial_burst` command line flag
+     * See https://ffmpeg.org/ffmpeg.html#:~:text=%2Dreadrate_initial_burst
+     */
+    readrateInitialBurst: number | undefined,
+
+    /**
      * Enable RTCP Sender Report for synchronization
      */
     rtcpSenderReportEnabled: boolean,
@@ -319,6 +325,7 @@ export async function playStream(
         width: video.width,
         height: video.height,
         frameRate: video.framerate_num / video.framerate_den,
+        readrateInitialBurst: undefined,
         rtcpSenderReportEnabled: true,
         forceChacha20Encryption: false
     } satisfies PlayStreamOptions;
@@ -344,6 +351,11 @@ export async function playStream(
                     ? Math.round(opts.frameRate)
                     : defaultOptions.frameRate
             ),
+
+            readrateInitialBurst:
+                isFiniteNonZero(opts.readrateInitialBurst) && opts.readrateInitialBurst > 0
+                    ? opts.readrateInitialBurst
+                    : defaultOptions.readrateInitialBurst,
 
             rtcpSenderReportEnabled:
                 opts.rtcpSenderReportEnabled ?? defaultOptions.rtcpSenderReportEnabled,
@@ -389,6 +401,21 @@ export async function playStream(
         audio.stream.pipe(aStream);
         vStream.syncStream = aStream;
         aStream.syncStream = vStream;
+
+        const burstTime = mergedOptions.readrateInitialBurst;
+        if (typeof burstTime === "number")
+        {
+            vStream.sync = aStream.sync = false;
+            vStream.noSleep = aStream.noSleep = true;
+            const stopBurst = (pts: number) => {
+                if (pts < burstTime * 1000)
+                    return;
+                vStream.sync = aStream.sync = true;
+                vStream.noSleep = aStream.noSleep = false;
+                vStream.off("pts", stopBurst);
+            }
+            vStream.on("pts", stopBurst);
+        }
     }
     return new Promise<void>((resolve) => {
         vStream.once("finish", () => {
