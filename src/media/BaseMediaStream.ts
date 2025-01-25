@@ -115,10 +115,8 @@ export class BaseMediaStream extends Writable {
         }
 
         const end_write = performance.now();
-        if (this._startTime === undefined)
-            this._startTime = start_write;
-        if (this._startPts === undefined)
-            this._startPts = this._pts;
+        this._startTime ??= start_write;
+        this._startPts ??= this._pts;
         if (this._noSleep)
         {
             callback(null);
