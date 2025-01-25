@@ -93,8 +93,6 @@ export class BaseMediaStream extends Writable {
 
         // biome-ignore lint/style/noNonNullAssertion: this will never happen with our media stream
         this._pts = combineLoHi(ptshi!, pts!) / time_base_den! * time_base_num! * 1000;
-        if (this._startPts === undefined)
-            this._startPts = this._pts;
         this.emit("pts", this._pts);
 
         const sendTime = end_sendFrame - start_sendFrame;
@@ -119,7 +117,8 @@ export class BaseMediaStream extends Writable {
         const end_write = performance.now();
         if (this._startTime === undefined)
             this._startTime = start_write;
-
+        if (this._startPts === undefined)
+            this._startPts = this._pts;
         if (this._noSleep)
         {
             callback(null);
