@@ -80,7 +80,6 @@ export class BaseMediaStream extends Writable {
         throw new Error("Not implemented");
     }
     async _write(frame: Packet, _: BufferEncoding, callback: (error?: Error | null) => void) {
-        const start_write = performance.now();
         await this._waitForOtherStream();
 
         const { data, ptshi, pts, durationhi, duration, time_base_num, time_base_den } = frame;
@@ -114,23 +113,22 @@ export class BaseMediaStream extends Writable {
             }, `Frame takes too long to send (${(ratio * 100).toFixed(2)}% frametime)`)
         }
 
-        const end_write = performance.now();
-        this._startTime ??= start_write;
+        this._startTime ??= start_sendFrame;
         this._startPts ??= this._pts;
-        if (this._noSleep)
+        const sleep = Math.max(
+            0, this._pts - this._startPts + frametime - (end_sendFrame - this._startTime)
+        );
+        if (this._noSleep || sleep === 0)
         {
             callback(null);
         }
         else
         {
-            const sleep = Math.max(
-                0, this._pts - this._startPts + frametime - (end_write - this._startTime)
-            );
             this._loggerSleep.debug({
                 stats: {
                     pts: this._pts,
                     startPts: this._startPts,
-                    time: end_write,
+                    time: end_sendFrame,
                     startTime: this._startTime,
                     frametime
                 }
