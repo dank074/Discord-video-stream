@@ -178,7 +178,7 @@ function h265AddParamSets(frame: Buffer, paramSets: H265ParamSets) {
 }
 
 const idToStream = new Map<string, Readable>();
-const libavPromise = LibAV.LibAV({ yesthreads: true });
+const libavPromise = LibAV.LibAV();
 libavPromise.then((libav) => {
     libav.onread = (id) => {
         idToStream.get(id)?.resume();
