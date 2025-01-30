@@ -6,9 +6,9 @@ import {
     type TransportEncryptor
 } from "../encryptor/TransportEncryptor.js";
 import { STREAMS_SIMULCAST, SupportedEncryptionModes, type SupportedVideoCodec } from "../../utils.js";
-import type { ReadyMessage, SelectProtocolAck } from "./VoiceMessageTypes.js";
 import WebSocket from 'ws';
 import EventEmitter from "node:events";
+import type { Message, GatewayRequest, GatewayResponse } from "./VoiceMessageTypes.js";
 
 type VoiceConnectionStatus =
 {
@@ -26,6 +26,11 @@ type WebRtcParameters = {
     rtxSsrc: number
     supportedEncryptionModes: SupportedEncryptionModes[]
 }
+
+type ValueOf<T> =
+    T extends (infer U)[] ? U :
+    T extends Record<string, infer U> ? U :
+    never
 
 export const CodecPayloadType = {
     "opus": {
@@ -46,7 +51,7 @@ export const CodecPayloadType = {
     "AV1": {
         name: "AV1", type: "video", priority: 1000, payload_type: 109, rtx_payload_type: 110, encode: true, decode: true
     }
-}
+} as const;
 
 export interface StreamOptions {
     /**
@@ -126,6 +131,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
     public webRtcParams: WebRtcParameters | null = null;
     private _streamOptions: StreamOptions;
     private _transportEncryptor?: TransportEncryptor;
+    private _sequenceNumber = -1;
 
     constructor(guildId: string, botId: string, channelId: string, options: Partial<StreamOptions>, callback: (udp: MediaUdp) => void) {
         super();
@@ -193,7 +199,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
                 return
             this.status.started = true;
 
-            this.ws = new WebSocket(`wss://${this.server}/?v=7`, {
+            this.ws = new WebSocket(`wss://${this.server}/?v=8`, {
                 followRedirects: true
             });
             this.ws.on("open", () => {
@@ -224,7 +230,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
         }
     }
 
-    handleReady(d: ReadyMessage): void {
+    handleReady(d: Message.Ready): void {
         // we hardcoded the STREAMS_SIMULCAST, which will always be array of 1
         const stream = d.streams[0];
         this.webRtcParams = {
@@ -238,7 +244,7 @@ export abstract class BaseMediaConnection extends EventEmitter {
         this.udp.updatePacketizer();
     }
 
-    handleProtocolAck(d: SelectProtocolAck): void {
+    handleProtocolAck(d: Message.SelectProtocolAck): void {
         const secretKey = Buffer.from(d.secret_key);
         switch (d.mode)
         {
@@ -254,8 +260,9 @@ export abstract class BaseMediaConnection extends EventEmitter {
 
     setupEvents(): void {
         this.ws?.on('message', (data: string) => {
-            // Maybe map out all the types here to avoid any?
-            const { op, d } = JSON.parse(data);
+            const { op, d, seq } = JSON.parse(data) as GatewayResponse;
+            if (seq)
+                this._sequenceNumber = seq;
 
             if (op === VoiceOpCodes.READY) { // ready
                 this.handleReady(d);
@@ -292,11 +299,14 @@ export abstract class BaseMediaConnection extends EventEmitter {
             clearInterval(this.interval);
         }
         this.interval = setInterval(() => {
-            this.sendOpcode(VoiceOpCodes.HEARTBEAT, 42069);
+            this.sendOpcode(VoiceOpCodes.HEARTBEAT, {
+                t: Date.now(),
+                seq_ack: this._sequenceNumber
+            });
         }, interval);
     }
 
-    sendOpcode(code:number, data: unknown): void {
+    sendOpcode<T extends GatewayRequest>(code: T["op"], data: T["d"]): void {
         this.ws?.send(JSON.stringify({
             op: code,
             d: data
@@ -307,6 +317,12 @@ export abstract class BaseMediaConnection extends EventEmitter {
     ** identifies with media server with credentials
     */
     identify(): void {
+        if (!this.serverId)
+            throw new Error("Server ID is null or empty");
+        if (!this.session_id)
+            throw new Error("Session ID is null or empty");
+        if (!this.token)
+            throw new Error("Token is null or empty");
         this.sendOpcode(VoiceOpCodes.IDENTIFY, {
             server_id: this.serverId,
             user_id: this.botId,
@@ -318,10 +334,17 @@ export abstract class BaseMediaConnection extends EventEmitter {
     }
 
     resume(): void {
+        if (!this.serverId)
+            throw new Error("Server ID is null or empty");
+        if (!this.session_id)
+            throw new Error("Session ID is null or empty");
+        if (!this.token)
+            throw new Error("Token is null or empty");
         this.sendOpcode(VoiceOpCodes.RESUME, {
             server_id: this.serverId,
             session_id: this.session_id,
             token: this.token,
+            seq_ack: this._sequenceNumber
         });
     }
 
@@ -332,6 +355,8 @@ export abstract class BaseMediaConnection extends EventEmitter {
     */
     setProtocols(): Promise<void> {
         const { ip, port } = this.udp;
+        if (!ip || !port)
+            throw new Error("IP or port is undefined (this shouldn't happen!!!)");
         // select encryption mode
         // From Discord docs: 
         // You must support aead_xchacha20_poly1305_rtpsize. You should prefer to use aead_aes256_gcm_rtpsize when it is available.
@@ -349,15 +374,12 @@ export abstract class BaseMediaConnection extends EventEmitter {
         return new Promise((resolve) => {
             this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
                 protocol: "udp",
-                codecs: Object.values(CodecPayloadType),
+                codecs: Object.values(CodecPayloadType) as ValueOf<typeof CodecPayloadType>[],
                 data: {
                     address: ip,
                     port: port,
                     mode: encryptionMode
-                },
-                address: ip,
-                port: port,
-                mode: encryptionMode
+                }
             });
             this.once("select_protocol_ack", () => resolve());
         })
