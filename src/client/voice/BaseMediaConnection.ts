@@ -259,8 +259,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
     }
 
     setupEvents(): void {
-        this.ws?.on('message', (data: string) => {
-            const { op, d, seq } = JSON.parse(data) as GatewayResponse;
+        this.ws?.on('message', (data, isBinary) => {
+            if (isBinary)
+                return;
+            const { op, d, seq } = JSON.parse(data.toString()) as GatewayResponse;
             if (seq)
                 this._sequenceNumber = seq;
 
