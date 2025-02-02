@@ -10,6 +10,17 @@ import { AVCodecID } from './LibavCodecId.js';
 
 export type EncoderOptions = {
     /**
+     * Disable video transcoding
+     * If enabled, all video related settings have no effects, and the input
+     * video stream is used as-is.
+     * 
+     * You need to ensure that the video stream has the right properties
+     * (keyframe every 1s, B-frames disabled). Failure to do so will result in
+     * a glitchy stream, or degraded performance
+     */
+    noTranscoding: boolean,
+
+    /**
      * Video width
      */
     width: number,
@@ -75,6 +86,7 @@ export function prepareStream(
     options: Partial<EncoderOptions> = {}
 ) {
     const defaultOptions = {
+        noTranscoding: false,
         // negative values = resize by aspect ratio, see https://trac.ffmpeg.org/wiki/Scaling
         width: -2,
         height: -2,
@@ -95,6 +107,9 @@ export function prepareStream(
 
     function mergeOptions(opts: Partial<EncoderOptions>) {
         return {
+            noTranscoding:
+                opts.noTranscoding ?? defaultOptions.noTranscoding,
+
             width:
                 isFiniteNonZero(opts.width) ? Math.round(opts.width) : defaultOptions.width,
     
@@ -191,55 +206,63 @@ export function prepareStream(
 
     // video setup
     const {
-        width, height, frameRate, bitrateVideo, bitrateVideoMax, videoCodec, h26xPreset
+        noTranscoding, width, height, frameRate, bitrateVideo, bitrateVideoMax, videoCodec, h26xPreset
     } = mergedOptions;
     command.addOutputOption("-map 0:v");
-    command.videoFilter(`scale=${width}:${height}`)
 
-    if (frameRate)
-        command.fpsOutput(frameRate);
+    if (noTranscoding)
+    {
+        command.videoCodec("copy");
+    }
+    else
+    {
+        command.videoFilter(`scale=${width}:${height}`)
 
-    command.addOutputOption([
-        "-b:v", `${bitrateVideo}k`,
-        "-maxrate:v", `${bitrateVideoMax}k`,
-        "-bf", "0",
-        "-pix_fmt", "yuv420p",
-        "-force_key_frames", "expr:gte(t,n_forced*1)"
-    ]);
+        if (frameRate)
+            command.fpsOutput(frameRate);
 
-    switch (videoCodec) {
-        case 'AV1':
-            command
-                .videoCodec("libsvtav1")
-            break;
-        case 'VP8':
-            command
-                .videoCodec("libvpx")
-                .outputOption('-deadline', 'realtime');
-            break;
-        case 'VP9':
-            command
-                .videoCodec("libvpx-vp9")
-                .outputOption('-deadline', 'realtime');
-            break;
-        case 'H264':
-            command
-                .videoCodec("libx264")
-                .outputOptions([
-                    '-tune zerolatency',
-                    `-preset ${h26xPreset}`,
-                    '-profile:v baseline',
-                ]);
-            break;
-        case 'H265':
-            command
-                .videoCodec("libx265")
-                .outputOptions([
-                    '-tune zerolatency',
-                    `-preset ${h26xPreset}`,
-                    '-profile:v main',
-                ]);
-            break;
+        command.addOutputOption([
+            "-b:v", `${bitrateVideo}k`,
+            "-maxrate:v", `${bitrateVideoMax}k`,
+            "-bf", "0",
+            "-pix_fmt", "yuv420p",
+            "-force_key_frames", "expr:gte(t,n_forced*1)"
+        ]);
+
+        switch (videoCodec) {
+            case 'AV1':
+                command
+                    .videoCodec("libsvtav1")
+                break;
+            case 'VP8':
+                command
+                    .videoCodec("libvpx")
+                    .outputOption('-deadline', 'realtime');
+                break;
+            case 'VP9':
+                command
+                    .videoCodec("libvpx-vp9")
+                    .outputOption('-deadline', 'realtime');
+                break;
+            case 'H264':
+                command
+                    .videoCodec("libx264")
+                    .outputOptions([
+                        '-tune zerolatency',
+                        `-preset ${h26xPreset}`,
+                        '-profile:v baseline',
+                    ]);
+                break;
+            case 'H265':
+                command
+                    .videoCodec("libx265")
+                    .outputOptions([
+                        '-tune zerolatency',
+                        `-preset ${h26xPreset}`,
+                        '-profile:v main',
+                    ]);
+                break;
+        }
     }
 
     // audio setup
