@@ -56,7 +56,7 @@ export class Streamer {
                 channel_id,
                 options ?? {},
                 (udp) => {
-                    udp.mediaConnection.setProtocols().then(() => resolve(udp))
+                    () => resolve(udp)
                 }
             );
             this._voiceConnection = voiceConn;
@@ -101,7 +101,7 @@ export class Streamer {
                 clientChannelId,
                 options ?? {},
                 (udp) => {
-                    udp.mediaConnection.setProtocols().then(() => resolve(udp))
+                    () => resolve(udp)
                 }
             );
             this.voiceConnection.streamConnection = streamConn;
