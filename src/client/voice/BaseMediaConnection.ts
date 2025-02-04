@@ -318,16 +318,16 @@ export abstract class BaseMediaConnection extends EventEmitter {
         } else {
             encryptionMode = SupportedEncryptionModes.XCHACHA20
         }
+        this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
+            protocol: "udp",
+            codecs: Object.values(CodecPayloadType) as ValueOf<typeof CodecPayloadType>[],
+            data: {
+                address: ip,
+                port: port,
+                mode: encryptionMode
+            }
+        });
         return new Promise((resolve) => {
-            this.sendOpcode(VoiceOpCodes.SELECT_PROTOCOL, {
-                protocol: "udp",
-                codecs: Object.values(CodecPayloadType) as ValueOf<typeof CodecPayloadType>[],
-                data: {
-                    address: ip,
-                    port: port,
-                    mode: encryptionMode
-                }
-            });
             this.once("select_protocol_ack", () => resolve());
         })
     }
