@@ -182,35 +182,35 @@ minimizeLatency?: boolean;
 /**
  * Set stream type as "Go Live" or camera stream
  */
-type: "go-live" | "camera",
+type?: "go-live" | "camera",
 
 /**
  * Override video width sent to Discord.
  * 
  * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
  */
-width: number,
+width?: number,
 
 /**
  * Override video height sent to Discord.
  * 
  * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
  */
-height: number,
+height?: number,
 
 /**
  * Override video frame rate sent to Discord.
  * 
  * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
  */
-frameRate: number,
+frameRate?: number,
 
 /**
  * Same as ffmpeg's `readrate_initial_burst` command line flag
  * 
  * See https://ffmpeg.org/ffmpeg.html#:~:text=%2Dreadrate_initial_burst
  */
-readrateInitialBurst: number | undefined,
+readrateInitialBurst?: number,
 ```
 
 ## Streamer options available
