@@ -132,6 +132,14 @@ try {
 
 ```typescript
 /**
+ * Disable transcoding of the video stream. If specified, all video related
+ * options have no effects
+ * 
+ * Only use this if your video stream is Discord streaming friendly, otherwise
+ * you'll get a glitchy output
+ */
+noTranscoding?: boolean;
+/**
  * Video output width
  */
 width?: number;
