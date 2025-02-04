@@ -403,18 +403,13 @@ export async function playStream(
         streamer.signalVideo(true);
         stopStream = () => streamer.signalVideo(false);
     }
-    udp.mediaConnection.streamOptions = {
+    udp.setPacketizer(videoCodecMap[video.codec]);
+    udp.mediaConnection.setSpeaking(true);
+    udp.mediaConnection.setVideoAttributes(true, {
         width: mergedOptions.width,
         height: mergedOptions.height,
-        videoCodec: videoCodecMap[video.codec],
-        fps: mergedOptions.frameRate,
-        rtcpSenderReportEnabled: mergedOptions.rtcpSenderReportEnabled,
-        forceChacha20Encryption: mergedOptions.forceChacha20Encryption
-    }
-    await udp.mediaConnection.setProtocols();
-    udp.updatePacketizer(); // TODO: put all packetizers here when we remove the old API
-    udp.mediaConnection.setSpeaking(true);
-    udp.mediaConnection.setVideoStatus(true);
+        fps: mergedOptions.frameRate
+    });
 
     const vStream = new VideoStream(udp);
     video.stream.pipe(vStream);
@@ -444,7 +439,7 @@ export async function playStream(
         vStream.once("finish", () => {
             stopStream();
             udp.mediaConnection.setSpeaking(false);
-            udp.mediaConnection.setVideoStatus(false);
+            udp.mediaConnection.setVideoAttributes(false);
             resolve();
         });
     });
