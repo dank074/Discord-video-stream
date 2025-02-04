@@ -12,6 +12,9 @@ type EmitterEvents = {
 }
 
 export type StreamerOptions = {
+    /**
+     * Force the use of ChaCha20 encryption. Faster on CPUs without AES-NI
+     */
     forceChacha20Encryption: boolean;
 }
 

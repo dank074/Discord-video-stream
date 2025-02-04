@@ -318,12 +318,7 @@ export type PlayStreamOptions = {
     /**
      * Enable RTCP Sender Report for synchronization
      */
-    rtcpSenderReportEnabled: boolean,
-
-    /**
-     * Force the use of ChaCha20 encryption. Faster on CPUs without AES-NI
-     */
-    forceChacha20Encryption: boolean
+    rtcpSenderReportEnabled: boolean
 }
 
 export async function playStream(
@@ -350,7 +345,6 @@ export async function playStream(
         frameRate: video.framerate_num / video.framerate_den,
         readrateInitialBurst: undefined,
         rtcpSenderReportEnabled: true,
-        forceChacha20Encryption: false
     } satisfies PlayStreamOptions;
 
     function mergeOptions(opts: Partial<PlayStreamOptions>)
@@ -381,10 +375,7 @@ export async function playStream(
                     : defaultOptions.readrateInitialBurst,
 
             rtcpSenderReportEnabled:
-                opts.rtcpSenderReportEnabled ?? defaultOptions.rtcpSenderReportEnabled,
-
-            forceChacha20Encryption:
-                opts.forceChacha20Encryption ?? defaultOptions.forceChacha20Encryption
+                opts.rtcpSenderReportEnabled ?? defaultOptions.rtcpSenderReportEnabled
         } satisfies PlayStreamOptions
     }
 
