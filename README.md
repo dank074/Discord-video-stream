@@ -176,9 +176,46 @@ h26xPreset?: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'mediu
 minimizeLatency?: boolean;
 ```
 
+## `playStream` options available
+
+```typescript
+/**
+ * Set stream type as "Go Live" or camera stream
+ */
+type: "go-live" | "camera",
+
+/**
+ * Override video width sent to Discord.
+ * 
+ * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
+ */
+width: number,
+
+/**
+ * Override video height sent to Discord.
+ * 
+ * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
+ */
+height: number,
+
+/**
+ * Override video frame rate sent to Discord.
+ * 
+ * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
+ */
+frameRate: number,
+
+/**
+ * Same as ffmpeg's `readrate_initial_burst` command line flag
+ * 
+ * See https://ffmpeg.org/ffmpeg.html#:~:text=%2Dreadrate_initial_burst
+ */
+readrateInitialBurst: number | undefined,
+```
+
 ## Streamer options available
 
-These control internal operations of the library, so you probably shouldn't change it without a good reason
+These control internal operations of the library, and can be changed through the `opts` property on the `Streamer` class. You probably shouldn't change it without a good reason
 
 ```typescript
 /**
