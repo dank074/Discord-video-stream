@@ -314,11 +314,6 @@ export type PlayStreamOptions = {
      * See https://ffmpeg.org/ffmpeg.html#:~:text=%2Dreadrate_initial_burst
      */
     readrateInitialBurst: number | undefined,
-
-    /**
-     * Enable RTCP Sender Report for synchronization
-     */
-    rtcpSenderReportEnabled: boolean
 }
 
 export async function playStream(
@@ -344,7 +339,6 @@ export async function playStream(
         height: video.height,
         frameRate: video.framerate_num / video.framerate_den,
         readrateInitialBurst: undefined,
-        rtcpSenderReportEnabled: true,
     } satisfies PlayStreamOptions;
 
     function mergeOptions(opts: Partial<PlayStreamOptions>)
@@ -373,9 +367,6 @@ export async function playStream(
                 isFiniteNonZero(opts.readrateInitialBurst) && opts.readrateInitialBurst > 0
                     ? opts.readrateInitialBurst
                     : defaultOptions.readrateInitialBurst,
-
-            rtcpSenderReportEnabled:
-                opts.rtcpSenderReportEnabled ?? defaultOptions.rtcpSenderReportEnabled
         } satisfies PlayStreamOptions
     }
 

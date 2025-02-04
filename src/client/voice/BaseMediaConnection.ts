@@ -109,6 +109,10 @@ export abstract class BaseMediaConnection extends EventEmitter {
         return this._transportEncryptor;
     }
 
+    public get streamer() {
+        return this._streamer;
+    }
+
     stop(): void {
         this.interval && clearInterval(this.interval);
         this.status.started = false;

@@ -63,7 +63,6 @@ class VideoPacketizerAnnexB extends BaseMediaPacketizer {
 
     constructor(connection: MediaUdp, ssrc: number, payloadType: number, nalFunctions: AnnexBHelpers) {
         super(connection, ssrc, payloadType, true);
-        this.srInterval = 5 * connection.mediaConnection.streamOptions.fps * 3; // ~5 seconds, assuming ~3 packets per frame
         this._nalFunctions = nalFunctions;
     }
 

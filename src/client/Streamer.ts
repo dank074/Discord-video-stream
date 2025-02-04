@@ -16,6 +16,10 @@ export type StreamerOptions = {
      * Force the use of ChaCha20 encryption. Faster on CPUs without AES-NI
      */
     forceChacha20Encryption: boolean;
+    /**
+     * Enable RTCP Sender Report for synchronization
+     */
+    rtcpSenderReportEnabled: boolean
 }
 
 export class Streamer {
@@ -28,6 +32,7 @@ export class Streamer {
         this._client = client;
         this._opts = {
             forceChacha20Encryption: false,
+            rtcpSenderReportEnabled: true,
             ...opts
         };
 
