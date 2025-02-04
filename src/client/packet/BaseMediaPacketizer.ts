@@ -13,7 +13,7 @@ let sodium: Promise<sp.SodiumPlus> | undefined;
 export class BaseMediaPacketizer {
     private _loggerRtcpSr = new Log("packetizer:rtcp-sr");
 
-    private _ssrc?: number;
+    private _ssrc: number;
     private _payloadType: number;
     private _mtu: number;
     private _sequence: number;
@@ -28,9 +28,10 @@ export class BaseMediaPacketizer {
     private _mediaUdp: MediaUdp;
     private _extensionEnabled: boolean;
 
-    constructor(connection: MediaUdp, payloadType: number, extensionEnabled = false) {
+    constructor(connection: MediaUdp, ssrc: number, payloadType: number, extensionEnabled = false) {
         this._mediaUdp = connection;
         this._payloadType = payloadType;
+        this._ssrc = ssrc;
         this._sequence = 0;
         this._timestamp = 0;
         this._totalBytes = 0;
@@ -128,9 +129,6 @@ export class BaseMediaPacketizer {
     }
 
     public makeRtpHeader(isLastPacket = true): Buffer {
-        if (!this._ssrc)
-            throw new Error("SSRC is not set");
-
         const packetHeader = Buffer.alloc(12);
     
         packetHeader[0] = 2 << 6 | ((this._extensionEnabled ? 1 : 0) << 4); // set version and flags
@@ -145,9 +143,6 @@ export class BaseMediaPacketizer {
     }
 
     public async makeRtcpSenderReport(): Promise<Buffer> {
-        if (!this._ssrc)
-            throw new Error("SSRC is not set");
-
         const packetHeader = Buffer.allocUnsafe(8);
 
         packetHeader[0] = 0x80; // RFC1889 v2, no padding, no reception report count
