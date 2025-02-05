@@ -71,28 +71,25 @@ export class MediaUdp {
         await this.videoPacketizer?.sendFrame(frame, frametime);
     }
 
-    public updatePacketizer(): void {
+    public setPacketizer(videoCodec: string): void {
         if (!this.mediaConnection.webRtcParams)
             throw new Error("WebRTC connection not ready");
         const { audioSsrc, videoSsrc } = this.mediaConnection.webRtcParams;
-        this._audioPacketizer = new AudioPacketizer(this);
-        this._audioPacketizer.ssrc = audioSsrc;
-        const videoCodec = normalizeVideoCodec(this.mediaConnection.streamOptions.videoCodec);
-        switch (videoCodec)
+        this._audioPacketizer = new AudioPacketizer(this, audioSsrc);
+        switch (normalizeVideoCodec(videoCodec))
         {
             case "H264":
-                this._videoPacketizer = new VideoPacketizerH264(this);
+                this._videoPacketizer = new VideoPacketizerH264(this, videoSsrc);
                 break;
             case "H265":
-                this._videoPacketizer = new VideoPacketizerH265(this);
+                this._videoPacketizer = new VideoPacketizerH265(this, videoSsrc);
                 break;
             case "VP8":
-                this._videoPacketizer = new VideoPacketizerVP8(this);
+                this._videoPacketizer = new VideoPacketizerVP8(this, videoSsrc);
                 break;
             default:
                 throw new Error(`Packetizer not implemented for ${videoCodec}`)
         }
-        this._videoPacketizer.ssrc = videoSsrc;
     }
 
     public sendPacket(packet: Buffer): Promise<void> {

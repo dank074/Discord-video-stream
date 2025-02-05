@@ -13,7 +13,7 @@ let sodium: Promise<sp.SodiumPlus> | undefined;
 export class BaseMediaPacketizer {
     private _loggerRtcpSr = new Log("packetizer:rtcp-sr");
 
-    private _ssrc?: number;
+    private _ssrc: number;
     private _payloadType: number;
     private _mtu: number;
     private _sequence: number;
@@ -21,26 +21,29 @@ export class BaseMediaPacketizer {
 
     private _totalBytes: number;
     private _totalPackets: number;
-    private _prevTotalPackets: number;
     private _lastPacketTime: number;
+    private _lastRtcpTime: number;
+    private _currentMediaTimestamp: number;
     private _srInterval: number;
 
     private _mediaUdp: MediaUdp;
     private _extensionEnabled: boolean;
 
-    constructor(connection: MediaUdp, payloadType: number, extensionEnabled = false) {
+    constructor(connection: MediaUdp, ssrc: number, payloadType: number, extensionEnabled = false) {
         this._mediaUdp = connection;
         this._payloadType = payloadType;
+        this._ssrc = ssrc;
         this._sequence = 0;
         this._timestamp = 0;
         this._totalBytes = 0;
         this._totalPackets = 0;
-        this._prevTotalPackets = 0;
         this._lastPacketTime = 0;
+        this._lastRtcpTime = 0;
+        this._currentMediaTimestamp = 0;
         this._mtu = 1200;
         this._extensionEnabled = extensionEnabled;
 
-        this._srInterval = 512; // Sane fallback value for interval
+        this._srInterval = 1000;
     }
 
     public get ssrc(): number | undefined
@@ -51,12 +54,11 @@ export class BaseMediaPacketizer {
     public set ssrc(value: number)
     {
         this._ssrc = value;
-        this._totalBytes = this._totalPackets = this._prevTotalPackets = 0;
+        this._totalBytes = this._totalPackets = 0;
     }
 
     /**
-     * The interval (number of packets) between 2 consecutive RTCP Sender
-     * Report packets
+     * The interval between 2 consecutive RTCP Sender Report packets in ms
      */
     public get srInterval(): number
     {
@@ -74,27 +76,32 @@ export class BaseMediaPacketizer {
     }
 
     public async onFrameSent(packetsSent: number, bytesSent: number, frametime: number): Promise<void> {
-        if(!this._mediaUdp.mediaConnection.streamOptions.rtcpSenderReportEnabled) return;
         
-        this._totalPackets = this._totalPackets + packetsSent;
-        this._totalBytes = (this._totalBytes + bytesSent) % max_int32bit;
-
-        // Not using modulo here, since the number of packet sent might not be
-        // exactly a multiple of the interval
-        if (Math.floor(this._totalPackets / this._srInterval) - Math.floor(this._prevTotalPackets / this._srInterval) > 0)
+        if (this._mediaUdp.mediaConnection.streamer.opts.rtcpSenderReportEnabled)
         {
-            const senderReport = await this.makeRtcpSenderReport();
-            this._mediaUdp.sendPacket(senderReport);
-            this._prevTotalPackets = this._totalPackets;
-            this._loggerRtcpSr.debug({
-                stats: {
-                    ssrc: this._ssrc,
-                    timestamp: this._timestamp,
-                    totalPackets: this._totalPackets,
-                    totalBytes: this._totalBytes
-                }
-            }, `Sent RTCP sender report for SSRC ${this._ssrc}`);
+            this._totalPackets = this._totalPackets + packetsSent;
+            this._totalBytes = (this._totalBytes + bytesSent) % max_int32bit;
+
+            /**
+             * Not using modulo here, since the timestamp might not be an exact
+             * multiple of the interval
+             */
+            if (Math.floor(this._currentMediaTimestamp / this._srInterval) - Math.floor(this._lastRtcpTime / this._srInterval) > 0)
+            {
+                const senderReport = await this.makeRtcpSenderReport();
+                this._mediaUdp.sendPacket(senderReport);
+                this._lastRtcpTime = this._currentMediaTimestamp;
+                this._loggerRtcpSr.debug({
+                    stats: {
+                        ssrc: this._ssrc,
+                        timestamp: this._timestamp,
+                        totalPackets: this._totalPackets,
+                        totalBytes: this._totalBytes
+                    }
+                }, `Sent RTCP sender report for SSRC ${this._ssrc}`);
+            }
         }
+        this._currentMediaTimestamp += frametime;
     }
 
     /**
@@ -128,9 +135,6 @@ export class BaseMediaPacketizer {
     }
 
     public makeRtpHeader(isLastPacket = true): Buffer {
-        if (!this._ssrc)
-            throw new Error("SSRC is not set");
-
         const packetHeader = Buffer.alloc(12);
     
         packetHeader[0] = 2 << 6 | ((this._extensionEnabled ? 1 : 0) << 4); // set version and flags
@@ -145,9 +149,6 @@ export class BaseMediaPacketizer {
     }
 
     public async makeRtcpSenderReport(): Promise<Buffer> {
-        if (!this._ssrc)
-            throw new Error("SSRC is not set");
-
         const packetHeader = Buffer.allocUnsafe(8);
 
         packetHeader[0] = 0x80; // RFC1889 v2, no padding, no reception report count

@@ -5,20 +5,36 @@ import { GatewayOpCodes } from "./GatewayOpCodes.js";
 import type TypedEmitter from "typed-emitter";
 import type { Client } from 'discord.js-selfbot-v13';
 import type { MediaUdp } from "./voice/MediaUdp.js";
-import type { StreamOptions } from "./voice/index.js";
 import type { GatewayEvent } from "./GatewayEvents.js";
 
 type EmitterEvents = {
     [K in GatewayEvent["t"]]: (data: Extract<GatewayEvent, { t: K }>["d"]) => void
 }
 
+export type StreamerOptions = {
+    /**
+     * Force the use of ChaCha20 encryption. Faster on CPUs without AES-NI
+     */
+    forceChacha20Encryption: boolean;
+    /**
+     * Enable RTCP Sender Report for synchronization
+     */
+    rtcpSenderReportEnabled: boolean
+}
+
 export class Streamer {
     private _voiceConnection?: VoiceConnection;
     private _client: Client;
+    private _opts: StreamerOptions;
     private _gatewayEmitter = new EventEmitter() as TypedEmitter.default<EmitterEvents>
 
-    constructor(client: Client) {
+    constructor(client: Client, opts?: Partial<StreamerOptions>) {
         this._client = client;
+        this._opts = {
+            forceChacha20Encryption: false,
+            rtcpSenderReportEnabled: true,
+            ...opts
+        };
 
         //listen for messages
         this.client.on('raw', (packet: GatewayEvent) => {
@@ -29,6 +45,10 @@ export class Streamer {
 
     public get client(): Client {
         return this._client;
+    }
+
+    public get opts(): StreamerOptions {
+        return this._opts;
     }
 
     public get voiceConnection(): VoiceConnection | undefined {
@@ -43,7 +63,7 @@ export class Streamer {
         });
     }
 
-    public joinVoice(guild_id: string, channel_id: string, options?: Partial<StreamOptions>): Promise<MediaUdp> {
+    public joinVoice(guild_id: string, channel_id: string): Promise<MediaUdp> {
         return new Promise<MediaUdp>((resolve, reject) => {
             if (!this.client.user) {
                 reject("Client not logged in");
@@ -51,12 +71,12 @@ export class Streamer {
             }
             const user_id = this.client.user.id;
             const voiceConn = new VoiceConnection(
+                this,
                 guild_id,
                 user_id,
                 channel_id,
-                options ?? {},
                 (udp) => {
-                    udp.mediaConnection.setProtocols().then(() => resolve(udp))
+                    resolve(udp)
                 }
             );
             this._voiceConnection = voiceConn;
@@ -72,7 +92,7 @@ export class Streamer {
         });
     }
 
-    public createStream(options?: Partial<StreamOptions>): Promise<MediaUdp> {
+    public createStream(): Promise<MediaUdp> {
         return new Promise<MediaUdp>((resolve, reject) => {
             if (!this.client.user) {
                 reject("Client not logged in");
@@ -96,12 +116,12 @@ export class Streamer {
             if (!session_id)
                 throw new Error("Session doesn't exist yet");
             const streamConn = new StreamConnection(
+                this,
                 clientGuildId,
                 clientUserId,
                 clientChannelId,
-                options ?? {},
                 (udp) => {
-                    udp.mediaConnection.setProtocols().then(() => resolve(udp))
+                    resolve(udp)
                 }
             );
             this.voiceConnection.streamConnection = streamConn;

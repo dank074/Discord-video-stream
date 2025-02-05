@@ -293,37 +293,31 @@ export type PlayStreamOptions = {
 
     /**
      * Override video width sent to Discord.
+     * 
      * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
      */
     width: number,
 
     /**
      * Override video height sent to Discord.
+     * 
      * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
      */
     height: number,
 
     /**
      * Override video frame rate sent to Discord.
+     * 
      * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
      */
     frameRate: number,
 
     /**
      * Same as ffmpeg's `readrate_initial_burst` command line flag
+     * 
      * See https://ffmpeg.org/ffmpeg.html#:~:text=%2Dreadrate_initial_burst
      */
     readrateInitialBurst: number | undefined,
-
-    /**
-     * Enable RTCP Sender Report for synchronization
-     */
-    rtcpSenderReportEnabled: boolean,
-
-    /**
-     * Force the use of ChaCha20 encryption. Faster on CPUs without AES-NI
-     */
-    forceChacha20Encryption: boolean
 }
 
 export async function playStream(
@@ -349,8 +343,6 @@ export async function playStream(
         height: video.height,
         frameRate: video.framerate_num / video.framerate_den,
         readrateInitialBurst: undefined,
-        rtcpSenderReportEnabled: true,
-        forceChacha20Encryption: false
     } satisfies PlayStreamOptions;
 
     function mergeOptions(opts: Partial<PlayStreamOptions>)
@@ -379,12 +371,6 @@ export async function playStream(
                 isFiniteNonZero(opts.readrateInitialBurst) && opts.readrateInitialBurst > 0
                     ? opts.readrateInitialBurst
                     : defaultOptions.readrateInitialBurst,
-
-            rtcpSenderReportEnabled:
-                opts.rtcpSenderReportEnabled ?? defaultOptions.rtcpSenderReportEnabled,
-
-            forceChacha20Encryption:
-                opts.forceChacha20Encryption ?? defaultOptions.forceChacha20Encryption
         } satisfies PlayStreamOptions
     }
 
@@ -403,18 +389,13 @@ export async function playStream(
         streamer.signalVideo(true);
         stopStream = () => streamer.signalVideo(false);
     }
-    udp.mediaConnection.streamOptions = {
+    udp.setPacketizer(videoCodecMap[video.codec]);
+    udp.mediaConnection.setSpeaking(true);
+    udp.mediaConnection.setVideoAttributes(true, {
         width: mergedOptions.width,
         height: mergedOptions.height,
-        videoCodec: videoCodecMap[video.codec],
-        fps: mergedOptions.frameRate,
-        rtcpSenderReportEnabled: mergedOptions.rtcpSenderReportEnabled,
-        forceChacha20Encryption: mergedOptions.forceChacha20Encryption
-    }
-    await udp.mediaConnection.setProtocols();
-    udp.updatePacketizer(); // TODO: put all packetizers here when we remove the old API
-    udp.mediaConnection.setSpeaking(true);
-    udp.mediaConnection.setVideoStatus(true);
+        fps: mergedOptions.frameRate
+    });
 
     const vStream = new VideoStream(udp);
     video.stream.pipe(vStream);
@@ -444,7 +425,7 @@ export async function playStream(
         vStream.once("finish", () => {
             stopStream();
             udp.mediaConnection.setSpeaking(false);
-            udp.mediaConnection.setVideoStatus(false);
+            udp.mediaConnection.setVideoAttributes(false);
             resolve();
         });
     });

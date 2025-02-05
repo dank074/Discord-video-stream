@@ -1,13 +1,16 @@
-import { MediaUdp, Streamer, streamLivestreamVideo, Utils } from '@dank074/discord-video-stream';
 import { Client, StageChannel } from 'discord.js-selfbot-v13';
+import { Streamer, Utils, prepareStream, playStream } from "@dank074/discord-video-stream";
 import { executablePath } from 'puppeteer';
 import { launch, getStream } from 'puppeteer-stream';
 import config from "./config.json" with {type: "json"};
-import { Readable } from 'node:stream';
-import PCancelable from "p-cancelable";
+
+type BrowserOptions = {
+    width: number,
+    height: number
+}
 
 const streamer = new Streamer(new Client());
-let command: PCancelable<string>;
+let browser: Awaited<ReturnType<typeof launch>>;
 
 // ready event
 streamer.client.on("ready", () => {
@@ -22,7 +25,7 @@ streamer.client.on("messageCreate", async (msg) => {
 
     if (!msg.content) return;
 
-    if(msg.content.startsWith("$play-screen")) {
+    if (msg.content.startsWith("$play-screen")) {
         const args = msg.content.split(" ");
         if (args.length < 2) return;
 
@@ -32,34 +35,23 @@ streamer.client.on("messageCreate", async (msg) => {
 
         const channel = msg.author.voice.channel;
 
-        if(!channel) return;
+        if (!channel) return;
 
         console.log(`Attempting to join voice channel ${msg.guildId}/${channel.id}`);
         await streamer.joinVoice(msg.guildId, channel.id);
 
-        if(channel instanceof StageChannel)
+        if (channel instanceof StageChannel)
         {
             await streamer.client.user.voice.setSuppressed(false);
         }
-        
-        const streamUdpConn = await streamer.createStream({
-            width: config.streamOpts.width, 
-            height: config.streamOpts.height, 
-            fps: config.streamOpts.fps, 
-            bitrateKbps: config.streamOpts.bitrateKbps,
-            maxBitrateKbps: config.streamOpts.maxBitrateKbps, 
-            hardwareAcceleratedDecoding: config.streamOpts.hardware_acceleration,
-            videoCodec: "VP8" // puppeteer only supports this video codec
+
+        await streamPuppeteer(url, streamer, {
+            width: config.streamOpts.width,
+            height: config.streamOpts.height
         });
-
-        await streamPuppeteer(url, streamUdpConn);
-
-        streamer.stopStream();
-
         return;
     } else if (msg.content.startsWith("$disconnect")) {
-        command?.cancel();
-
+        browser?.close();
         streamer.leaveVoice();
     } 
 })
@@ -67,13 +59,11 @@ streamer.client.on("messageCreate", async (msg) => {
 // login
 streamer.client.login(config.token);
 
-async function streamPuppeteer(url: string, udpConn: MediaUdp) {
-    const streamOpts = udpConn.mediaConnection.streamOptions;
-    
-    const browser = await launch({
+async function streamPuppeteer(url: string, streamer: Streamer, opts: BrowserOptions) {
+    browser = await launch({
         defaultViewport: {
-            width: streamOpts.width,
-            height: streamOpts.height,
+            width: opts.width,
+            height: opts.height,
         },
         executablePath: executablePath()
     });
@@ -81,26 +71,27 @@ async function streamPuppeteer(url: string, udpConn: MediaUdp) {
     const page = await browser.newPage();
     await page.goto(url);
 
-    // node typings are fucked, not sure why
-    const stream: any = await getStream(page, { audio: true, video: true, mimeType: "video/webm;codecs=vp8,opus" }); 
+    const stream = await getStream(page, { audio: true, video: true, mimeType: "video/webm;codecs=vp8,opus" }); 
 
-    udpConn.mediaConnection.setSpeaking(true);
-    udpConn.mediaConnection.setVideoStatus(true);
     try {
-        // is there a way to distinguish audio from video chunks so we dont have to use ffmpeg ???
-        command = streamLivestreamVideo((stream as Readable), udpConn);
-
-        const res = await command;
-        console.log("Finished playing video " + res);
+        const { command, output } = prepareStream(stream, {
+            frameRate: config.streamOpts.fps,
+            bitrateVideo: config.streamOpts.bitrateKbps,
+            bitrateVideoMax: config.streamOpts.maxBitrateKbps,
+            hardwareAcceleratedDecoding: config.streamOpts.hardware_acceleration,
+            videoCodec: Utils.normalizeVideoCodec(config.streamOpts.videoCodec)
+        })
+        command.on("error", (err, stdout, stderr) => {
+            console.log("An error occurred with ffmpeg");
+            console.log(err)
+        });
+        
+        await playStream(output, streamer, {
+            // Use this to catch up with ffmpeg
+            readrateInitialBurst: 10
+        });
+        console.log("Finished playing video");
     } catch (e) {
-        if (command.isCanceled) {
-            // Handle the cancelation here
-            console.log('Operation was canceled');
-        } else {
-            console.log(e);
-        }
-    } finally {
-        udpConn.mediaConnection.setSpeaking(false);
-        udpConn.mediaConnection.setVideoStatus(false);
+        console.log(e);
     }
 }

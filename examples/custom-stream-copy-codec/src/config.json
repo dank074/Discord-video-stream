@@ -1,8 +1,0 @@
-{
-    "token": "SELF TOKEN HERE",
-    "acceptedAuthors": ["USER_ID_HERE"],
-    "streamOpts": {
-        "bitrateKbps": 1000,
-        "maxBitrateKbps": 2500
-    }
-}

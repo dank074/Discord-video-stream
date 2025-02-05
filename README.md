@@ -1,4 +1,5 @@
 # Discord self-bot video
+
 Fork: [Discord-video-experiment](https://github.com/mrjvs/Discord-video-experiment)
 
 > [!CAUTION]
@@ -9,34 +10,42 @@ This project implements the custom Discord UDP protocol for sending media. Since
 For better stability it is recommended to use WebRTC protocol instead since Discord is forced to adhere to spec, which means that the non-signaling portion of the code is guaranteed to work.
 
 ## Features
- - Playing video & audio in a voice channel (`Go Live`, or webcam video)
+
+- Playing video & audio in a voice channel (`Go Live`, or webcam video)
 
 ## Implementation
+
 What I implemented and what I did not.
 
-#### Video codecs
- - [X] VP8
- - [ ] VP9
- - [X] H.264
- - [X] H.265
- - [ ] AV1
+### Video codecs
 
-#### Packet types
- - [X] RTP (sending of realtime data)
- - [ ] RTX (retransmission)
+- [X] VP8
+- [ ] VP9
+- [X] H.264
+- [X] H.265
+- [ ] AV1
 
-#### Connection types
- - [X] Regular Voice Connection
- - [X] Go live
+### Packet types
 
- ### Encryption
- - [X] Transport Encryption
- - [ ] https://github.com/dank074/Discord-video-stream/issues/102
+- [X] RTP (sending of realtime data)
+- [ ] RTX (retransmission)
 
-#### Extras
- - [X] Figure out rtp header extensions (discord specific) (discord seems to use one-byte RTP header extension https://www.rfc-editor.org/rfc/rfc8285.html#section-4.2)
+### Connection types
+
+- [X] Regular Voice Connection
+- [X] Go live
+
+### Encryption
+
+- [X] Transport Encryption
+- [ ] [End-to-end Encryption](https://github.com/dank074/Discord-video-stream/issues/102)
+
+### Extras
+
+- [X] Figure out rtp header extensions (discord specific) (discord seems to use one-byte RTP header extension https://www.rfc-editor.org/rfc/rfc8285.html#section-4.2)
 
 Extensions supported by Discord (taken from the webrtc sdp exchange)
+
 ```
 "a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level"
 "a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time"
@@ -51,19 +60,24 @@ Extensions supported by Discord (taken from the webrtc sdp exchange)
 "a=extmap:13 urn:3gpp:video-orientation"
 "a=extmap:14 urn:ietf:params:rtp-hdrext:toffset"
 ```
+
 ## Requirements
+
 Ffmpeg is required for the usage of this package. If you are on linux you can easily install ffmpeg from your distribution's package manager.
 
 If you are on Windows, you can download it from the official ffmpeg website: https://ffmpeg.org/download.html
 
 ## Usage
+
 Install the package, alongside its peer-dependency discord.js-selfbot-v13:
+
 ```
 npm install @dank074/discord-video-stream@latest
 npm install discord.js-selfbot-v13@latest
 ```
 
 Create a new Streamer, and pass it a selfbot Client
+
 ```typescript
 import { Client } from "discord.js-selfbot-v13";
 import { Streamer } from '@dank074/discord-video-stream';
@@ -74,6 +88,7 @@ await streamer.client.login('TOKEN HERE');
 ```
 
 Make client join a voice channel and create a stream:
+
 ```typescript
 await streamer.joinVoice("GUILD ID HERE", "CHANNEL ID HERE");
 
@@ -83,29 +98,47 @@ const udp = await streamer.createStream({
 ```
 
 Start sending media over the udp connection:
-```typescript
-udp.mediaConnection.setSpeaking(true);
-udp.mediaConnection.setVideoStatus(true);
-try {
-    const cancellableCommand = await streamLivestreamVideo("DIRECT VIDEO URL OR READABLE STREAM HERE", udp);
 
-    const result = await cancellableCommand;
-    console.log("Finished playing video " + res);
+```typescript
+import { prepareStream, playStream, Util } from "@dank074/discord-video-stream"
+try {
+    const { command, output } = prepareStream("DIRECT VIDEO URL OR READABLE STREAM HERE", {
+        // Specify either width or height for aspect ratio aware scaling
+        // Specify both for stretched output
+        height: 1080,
+
+        // Force frame rate, or leave blank to use source frame rate
+        frameRate: 30,
+        bitrateVideo: 5000,
+        bitrateVideoMax: 7500,
+        videoCodec: Utils.normalizeVideoCodec("H264" /* or H265, VP9 */),
+        h26xPreset: "veryfast" // or superfast, ultrafast, ...
+    });
+    command.on("error", (err, stdout, stderr) => {
+        // Handle ffmpeg errors here
+    });
+
+    await playStream(output, streamer, {
+        type: "go-live" // use "camera" for camera stream
+    });
+
+    console.log("Finished playing video");
 } catch (e) {
-    if (command.isCanceled) {
-            // Handle the cancelation here
-            console.log('Ffmpeg command was cancelled');
-        } else {
-            console.log(e);
-        }
-} finally {
-    udp.mediaConnection.setSpeaking(false);
-    udp.mediaConnection.setVideoStatus(false);
+    console.log(e);
 }
 ```
 
-## Stream options available
+## Encoder options available
+
 ```typescript
+/**
+ * Disable transcoding of the video stream. If specified, all video related
+ * options have no effects
+ * 
+ * Only use this if your video stream is Discord streaming friendly, otherwise
+ * you'll get a glitchy output
+ */
+noTranscoding?: boolean;
 /**
  * Video output width
  */
@@ -119,10 +152,21 @@ height?: number;
  */
 fps?: number;
 /**
- * Video output bitrate in kbps
+ * Video average bitrate in kbps
  */
-bitrateKbps?: number;
-maxBitrateKbps?: number;
+bitrateVideo?: number;
+/**
+ * Video max bitrate in kbps
+ */
+bitrateVideoMax?: number;
+/**
+ * Audio bitrate in kbps
+ */
+bitrateAudio?: number;
+/**
+ * Enable audio output
+ */
+includeAudio?: boolean;
 /**
  * Enables hardware accelerated video decoding. Enabling this option might result in an exception
  * being thrown by Ffmpeg process if your system does not support hardware acceleration
@@ -133,11 +177,6 @@ hardwareAcceleratedDecoding?: boolean;
  */
 videoCodec?: SupportedVideoCodec;
 /**
- * Enables sending RTCP sender reports. Helps the receiver synchronize the audio/video frames, except in some weird
- * cases which is why you can disable it
- */
-rtcpSenderReportEnabled?: boolean;
-/**
  * Encoding preset for H264 or H265. The faster it is, the lower the quality
  */
 h26xPreset?: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'medium' | 'slow' | 'slower' | 'veryslow';
@@ -146,13 +185,73 @@ h26xPreset?: 'ultrafast' | 'superfast' | 'veryfast' | 'faster' | 'fast' | 'mediu
  * Might create lag in video output in some rare cases
  */
 minimizeLatency?: boolean;
+```
+
+## `playStream` options available
+
+```typescript
+/**
+ * Set stream type as "Go Live" or camera stream
+ */
+type?: "go-live" | "camera",
+
+/**
+ * Override video width sent to Discord.
+ * 
+ * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
+ */
+width?: number,
+
+/**
+ * Override video height sent to Discord.
+ * 
+ * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
+ */
+height?: number,
+
+/**
+ * Override video frame rate sent to Discord.
+ * 
+ * DO NOT SPECIFY UNLESS YOU KNOW WHAT YOU'RE DOING!
+ */
+frameRate?: number,
+
+/**
+ * Same as ffmpeg's `readrate_initial_burst` command line flag
+ * 
+ * See https://ffmpeg.org/ffmpeg.html#:~:text=%2Dreadrate_initial_burst
+ */
+readrateInitialBurst?: number,
+```
+
+## Streamer options available
+
+These control internal operations of the library, and can be changed through the `opts` property on the `Streamer` class. You probably shouldn't change it without a good reason
+
+```typescript
+/**
+ * Enables sending RTCP sender reports. Helps the receiver synchronize the
+ * audio/video frames, except in some weird cases which is why you can disable it
+ */
+rtcpSenderReportEnabled?: boolean;
 /**
  * ChaCha20-Poly1305 Encryption is faster than AES-256-GCM, except when using AES-NI
  */
 forceChacha20Encryption?: boolean;
+/**
+ * Custom headers for HTTP requests
+ */
+customHeaders?: Record<string, string>
 ```
+
+## Performance tips
+
+See [this page](./PERFORMANCE.md) for some tips on improving performance
+
 ## Running example
+
 `examples/basic/src/config.json`:
+
 ```json
 "token": "SELF TOKEN HERE",
 "acceptedAuthors": ["USER_ID_HERE"],
@@ -162,23 +261,28 @@ forceChacha20Encryption?: boolean;
 2. Generate js files with ```npm run build```
 3. Start program with: ```npm run start```
 4. Join a voice channel
-5. Start streaming with commands: 
+5. Start streaming with commands:
 
 for go-live
+
 ```
 $play-live <Direct video link>
 ```
+
 or for cam
+
 ```
 $play-cam <Direct video link>
 ```
 
 for example:
+
 ```
 $play-live http://commondatastorage.googleapis.com/gtv-videos-bucket/sample/BigBuckBunny.mp4
 ```
 
 ## FAQS
+
 - Can I stream on existing voice connection (CAM) and in a go-live connection simultaneously?
 
 Yes, just send the media packets over both udp connections. The voice gateway expects you to signal when a user turns on their camera, so make sure you signal using `client.signalVideo(guildId, channelId, true)` before you start sending cam media packets.
