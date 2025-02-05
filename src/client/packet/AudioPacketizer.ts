@@ -5,7 +5,6 @@ import { CodecPayloadType } from "../voice/BaseMediaConnection.js";
 export class AudioPacketizer extends BaseMediaPacketizer {
     constructor(connection: MediaUdp, ssrc: number) {
         super(connection, ssrc, CodecPayloadType.opus.payload_type);
-        this.srInterval = 5 * 1000 / 20; // ~5 seconds for 20ms frame time
     }
 
     public override async sendFrame(frame: Buffer, frametime: number): Promise<void> {
