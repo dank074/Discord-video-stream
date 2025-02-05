@@ -76,7 +76,7 @@ export class Streamer {
                 user_id,
                 channel_id,
                 (udp) => {
-                    () => resolve(udp)
+                    resolve(udp)
                 }
             );
             this._voiceConnection = voiceConn;
@@ -121,7 +121,7 @@ export class Streamer {
                 clientUserId,
                 clientChannelId,
                 (udp) => {
-                    () => resolve(udp)
+                    resolve(udp)
                 }
             );
             this.voiceConnection.streamConnection = streamConn;
