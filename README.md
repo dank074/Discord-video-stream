@@ -152,10 +152,21 @@ height?: number;
  */
 fps?: number;
 /**
- * Video output bitrate in kbps
+ * Video average bitrate in kbps
  */
-bitrateKbps?: number;
-maxBitrateKbps?: number;
+bitrateVideo?: number;
+/**
+ * Video max bitrate in kbps
+ */
+bitrateVideoMax?: number;
+/**
+ * Audio bitrate in kbps
+ */
+bitrateAudio?: number;
+/**
+ * Enable audio output
+ */
+includeAudio?: boolean;
 /**
  * Enables hardware accelerated video decoding. Enabling this option might result in an exception
  * being thrown by Ffmpeg process if your system does not support hardware acceleration
@@ -227,6 +238,10 @@ rtcpSenderReportEnabled?: boolean;
  * ChaCha20-Poly1305 Encryption is faster than AES-256-GCM, except when using AES-NI
  */
 forceChacha20Encryption?: boolean;
+/**
+ * Custom headers for HTTP requests
+ */
+customHeaders?: Record<string, string>
 ```
 
 ## Running example
