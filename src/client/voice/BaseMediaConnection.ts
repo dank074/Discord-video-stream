@@ -341,8 +341,6 @@ export abstract class BaseMediaConnection extends EventEmitter {
     public setVideoAttributes(enabled: false): void
     public setVideoAttributes(enabled: true, attr: VideoAttributes): void
     public setVideoAttributes(enabled: boolean, attr?: VideoAttributes): void {
-        if (!(enabled && attr))
-            throw new Error("Need to specify video attributes");
         if (!this.webRtcParams)
             throw new Error("WebRTC connection not ready");
         const { audioSsrc, videoSsrc, rtxSsrc } = this.webRtcParams;
@@ -354,6 +352,8 @@ export abstract class BaseMediaConnection extends EventEmitter {
                 streams: []
             })
         } else {
+            if (!attr)
+                throw new Error("Need to specify video attributes")
             this.sendOpcode(VoiceOpCodes.VIDEO, {
                 audio_ssrc: audioSsrc,
                 video_ssrc: videoSsrc,
