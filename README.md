@@ -244,6 +244,10 @@ forceChacha20Encryption?: boolean;
 customHeaders?: Record<string, string>
 ```
 
+## Performance tips
+
+See [this page](./PERFORMANCE.md) for some tips on improving performance
+
 ## Running example
 
 `examples/basic/src/config.json`:
